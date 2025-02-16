@@ -13,6 +13,7 @@
 # ----------------------------------------------------------------------------------
 
 import os
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -29,3 +30,23 @@ class Config:
     """A class that includes the configuration settings for Flask."""
 
     SECRET_KEY = os.getenv("SECRET_KEY")
+
+
+@dataclass
+class BeamlineConfig:
+    """A class that provides the configuration settings for each running beamline."""
+
+    _beamline: str | None = field(init=False, compare=False, repr=False)
+    _default_path: str | None = field(init=False, compare=False, repr=False)
+
+    def __post_init__(self) -> None:
+        self._beamline = os.getenv("BEAMLINE")
+        self._default_path = os.getenv("DEFAULT_PATH")
+
+    @property
+    def beamline(self) -> str | None:
+        return self._beamline
+
+    @property
+    def default_path(self) -> str | None:
+        return self._default_path
