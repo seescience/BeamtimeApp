@@ -1,0 +1,99 @@
+#!/usr/bin/env python3
+# ----------------------------------------------------------------------------------
+# Project: BeamtimeApp
+# File: pyproject.toml
+# ----------------------------------------------------------------------------------
+# Purpose: 
+# This file is used to specify the project configuration and dependencies.
+# ----------------------------------------------------------------------------------
+# Author: Christofanis Skordas
+#
+# Copyright (C) 2025 GSECARS, The University of Chicago, USA
+# Copyright (C) 2025 NSF SEES, USA
+# ----------------------------------------------------------------------------------
+
+[build-system]
+requires = [
+    "setuptools >= 75.8.0",
+    "setuptools_scm >= 8.1.0",
+    "wheel"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "BeamtimeApp"
+version = "0.0.1"
+authors = [
+    {name = "Christofanis Skordas", email = "55315750+skordaschristofanis@users.noreply.github.com"}
+]
+maintainers = [
+    {name = "Christofanis Skordas", email = "55315750+skordaschristofanis@users.noreply.github.com"}
+]
+description = "BeamtimeApp is a Flask application used to generate the required folders, DOI and collection data links (Globus/Nextcloud)."
+readme = {file = "README.md", content-type = "text/markdown"}
+license = {file = "LICENSE"}
+classifiers = [
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: System Administrators",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: MIT License"
+]
+requires-python = ">=3.13"
+dependencies = [
+    "flask>=3.1.0",
+    "python-dotenv>=1.0.1"
+]
+
+[project.optional-dependencies]
+development = [
+    "black>=25.1.0",
+    "flake8>=7.1.1",
+    "mypy>=1.15.0",
+    "pre-commit>=4.1.0",
+    "setuptools>=75.8.0",
+    "setuptools-scm>=8.1.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/seescience/BeamtimeApp"
+Issues = "https://github.com/seescience/BeamtimeApp/issues"
+
+[tool.black]
+line-length = 160
+target-version = ["py313"]
+include = "\\.pyi?$"
+exclude = """
+/(
+    \\.eggs
+  | \\.git
+  | \\.hg
+  | \\.mypy_cache
+  | \\.tox
+  | \\.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+"""
+
+[tool.flake8]
+exclude = ".git,__pycache__,build,dist,.venv,.tox,.eggs"
+max-line-length = 160
+
+[tool.mypy]
+mypy_path = "beamtime_app"
+check_untyped_defs = true
+disallow_any_generics = true
+ignore_missing_imports = true
+no_implicit_optional = true
+show_error_codes = true
+strict_equality = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_configs = true
+no_implicit_reexport = true
