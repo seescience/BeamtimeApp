@@ -10,7 +10,6 @@
 #
 # Copyright (C) 2025 GSECARS, The University of Chicago, USA
 # Copyright (C) 2025 NSF SEES, USA
-# 
 # ----------------------------------------------------------------------------------
 
 # Byte-compiled / optimized / DLL files
@@ -36,3 +35,9 @@ Desktop.ini
 
 # Tools
 *.mypy_cache/
+
+# Logs
+logs/
+
+# Sensitive data
+.env
