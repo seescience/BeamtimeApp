@@ -45,4 +45,9 @@ def create_flask_app(config_class=Config):
     # Set the Flask logger
     app.logger = flask_logger
 
+    # Import and register the routes
+    from beamtime_app.routes import beamtime
+
+    app.register_blueprint(beamtime)
+
     return app
