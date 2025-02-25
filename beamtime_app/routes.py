@@ -23,4 +23,4 @@ beamtime = Blueprint("beamtime", __name__)
 
 @beamtime.route("/")
 def home_route():
-    return render_template("home.html", beamline=beamline_config.beamline)
+    return render_template("index.html", beamline=beamline_config.beamline)
