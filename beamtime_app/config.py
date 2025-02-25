@@ -14,6 +14,7 @@
 
 import os
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -49,4 +50,8 @@ class BeamlineConfig:
 
     @property
     def default_path(self) -> str | None:
+        if self._default_path is not None:
+            today = datetime.today()
+            self._default_path = self._default_path.replace("{YEAR}", today.strftime("%Y"))
+            self._default_path = self._default_path.replace("{MONTH}", today.strftime("%b"))
         return self._default_path
