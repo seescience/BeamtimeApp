@@ -19,11 +19,17 @@ from pathlib import Path
 
 from flask import Flask
 
-from beamtime_app.config import Config, BeamlineConfig
+from beamtime_app.config import Config, BeamlineConfig, DatabaseConfig
+
+
+__all__ = ["create_flask_app", "beamline_config", "database_config"]
 
 
 # Get the beamline specific environment variables
 beamline_config = BeamlineConfig()
+
+# Create the database config instance
+database_config = DatabaseConfig()
 
 # Create the logs directory for the application
 Path("logs").mkdir(exist_ok=True)
