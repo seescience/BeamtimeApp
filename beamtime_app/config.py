@@ -20,6 +20,9 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 
+__all__ = ["Config", "BeamlineConfig", "DatabaseConfig"]
+
+
 # Find the .env file in the parent directory
 env_path = Path(__file__).resolve().parent.parent / ".env"
 
@@ -61,3 +64,17 @@ class BeamlineConfig:
     @property
     def pvlog_config(self) -> str | None:
         return self._pvlog_config
+
+
+@dataclass
+class DatabaseConfig:
+    """A class that provides the configuration settings for the database."""
+
+    _database_uri: str | None = field(init=False, compare=False, repr=False)
+
+    def __post_init__(self) -> None:
+        self._database_uri = os.getenv("DATABASE_URI")
+
+    @property
+    def database_uri(self) -> str | None:
+        return self._database_uri
