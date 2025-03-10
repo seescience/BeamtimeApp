@@ -376,3 +376,18 @@ class ExperimentAcknowledgment(BASE, BaseModel):
 
     def __post_init__(self) -> None:
         self._columns = {"experiment_id": self.experiment_id, "acknowledgment_id": self.acknowledgment_id}
+
+
+@dataclass
+class FolderQueue(BASE, BaseModel):
+    """Model for the folder queue."""
+
+    __tablename__ = "folder_queue"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    experiment_id: Mapped[int] = mapped_column(Integer, ForeignKey("experiment.id"))
+    status_id: Mapped[int] = mapped_column(Integer)
+    modify_time: Mapped[datetime.datetime] = mapped_column(DateTime, default=datetime.datetime.now)
+
+    def __post_init__(self) -> None:
+        self._columns = {"id": self.id, "experiment_id": self.experiment_id, "status_id": self.status_id, "modify_time": self.modify_time}
