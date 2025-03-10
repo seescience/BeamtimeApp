@@ -42,6 +42,8 @@ __all__ = [
     "ExperimentTechnique",
     "ExperimentFunding",
     "ExperimentAcknowledgment",
+    "FolderQueue",
+    "BaseDir",
 ]
 
 
@@ -393,3 +395,14 @@ class FolderQueue(BASE, BaseModel):
 
     def __post_init__(self) -> None:
         self._columns = {"id": self.id, "experiment_id": self.experiment_id, "status_id": self.status_id, "modify_time": self.modify_time}
+
+
+@dataclass
+class BaseDir(BASE, BaseModel):
+    """Model for the base directory table for each program."""
+
+    __tablename__ = "base_dir"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    beamline_id: Mapped[int] = mapped_column(Integer, ForeignKey("beamline.id"))
+    name: Mapped[str] = mapped_column(Text, nullable=False)
