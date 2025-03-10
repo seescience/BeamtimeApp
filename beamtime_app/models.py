@@ -295,7 +295,7 @@ class Experiment(BASE, BaseModel):
     user_folder: Mapped[str] = mapped_column(Text)
     data_doi: Mapped[str] = mapped_column(Text)
     pvlog_template_file: Mapped[str] = mapped_column(Text)
-    easf_pdf_file: Mapped[str] = mapped_column(Text)
+    esaf_pdf_file: Mapped[str] = mapped_column(Text)
     proposal_pdf_file: Mapped[str] = mapped_column(Text)
 
     def __post_init__(self) -> None:
@@ -316,7 +316,7 @@ class Experiment(BASE, BaseModel):
             "user_folder": self.user_folder,
             "data_doi": self.data_doi,
             "pvlog_template_file": self.pvlog_template_file,
-            "easf_pdf_file": self.easf_pdf_file,
+            "esaf_pdf_file": self.easf_pdf_file,
             "proposal_pdf_file": self.proposal_pdf_file,
         }
 
