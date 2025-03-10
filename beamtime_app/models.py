@@ -297,6 +297,7 @@ class Experiment(BASE, BaseModel):
     pvlog_template_file: Mapped[str] = mapped_column(Text)
     esaf_pdf_file: Mapped[str] = mapped_column(Text)
     proposal_pdf_file: Mapped[str] = mapped_column(Text)
+    folder_status_id: Mapped[int] = mapped_column(Integer)
 
     def __post_init__(self) -> None:
         self._columns = {
@@ -318,6 +319,7 @@ class Experiment(BASE, BaseModel):
             "pvlog_template_file": self.pvlog_template_file,
             "esaf_pdf_file": self.easf_pdf_file,
             "proposal_pdf_file": self.proposal_pdf_file,
+            "folder_status_id": self.folder_status_id,
         }
 
 
