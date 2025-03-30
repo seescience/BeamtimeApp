@@ -16,35 +16,13 @@ import datetime
 from dataclasses import dataclass, field
 from typing import Dict, Any
 
-from sqlalchemy import String, Text, DateTime, Integer, ForeignKey, PrimaryKeyConstraint
+from sqlalchemy import String, Text, DateTime, Integer, ForeignKey, Enum
 from sqlalchemy.orm import Mapped, mapped_column
 
 from beamtime_app.database import BASE
 
 
-__all__ = [
-    "Info",
-    "Message",
-    "UserType",
-    "UserLevel",
-    "EsafType",
-    "EsafStatus",
-    "Institution",
-    "Funding",
-    "Run",
-    "Beamline",
-    "Technique",
-    "Acknowledgment",
-    "Person",
-    "Proposal",
-    "Experiment",
-    "ExperimentPerson",
-    "ExperimentTechnique",
-    "ExperimentFunding",
-    "ExperimentAcknowledgment",
-    "FolderQueue",
-    "BaseDir",
-]
+__all__ = ["Info", "Run", "Beamline", "Technique", "Station", "Acknowledgment", "Person", "Experiment"]
 
 
 class BaseModel:
@@ -81,102 +59,6 @@ class Info(BASE, BaseModel):
 
 
 @dataclass
-class Message(BASE, BaseModel):
-    """Model for the messages."""
-
-    __tablename__ = "message"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    text: Mapped[str] = mapped_column(Text)
-    modify_time: Mapped[datetime.datetime] = mapped_column(DateTime, default=datetime.datetime.now)
-
-    def __post_init__(self) -> None:
-        self._columns = {"id": self.id, "text": self.text, "modify_time": self.modify_time}
-
-
-@dataclass
-class UserType(BASE, BaseModel):
-    """Model for the available user types."""
-
-    __tablename__ = "user_type"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String(64))
-
-    def __post_init__(self) -> None:
-        self._columns = {"id": self.id, "name": self.name}
-
-
-@dataclass
-class UserLevel(BASE, BaseModel):
-    """Model for the available user levels."""
-
-    __tablename__ = "user_level"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String(64))
-
-    def __post_init__(self) -> None:
-        self._columns = {"id": self.id, "name": self.name}
-
-
-@dataclass
-class EsafType(BASE, BaseModel):
-    """Model for the available ESAF types."""
-
-    __tablename__ = "esaf_type"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String(64))
-
-    def __post_init__(self) -> None:
-        self._columns = {"id": self.id, "name": self.name}
-
-
-@dataclass
-class EsafStatus(BASE, BaseModel):
-    """Model for the available ESAF statuses."""
-
-    __tablename__ = "esaf_status"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String(64))
-
-    def __post_init__(self) -> None:
-        self._columns = {"id": self.id, "name": self.name}
-
-
-@dataclass
-class Institution(BASE, BaseModel):
-    """Model for the institutions."""
-
-    __tablename__ = "institution"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String(2048))
-    city: Mapped[str] = mapped_column(String(512))
-    country: Mapped[str] = mapped_column(String(512))
-
-    def __post_init__(self) -> None:
-        self._columns = {"id": self.id, "name": self.name, "city": self.city, "country": self.country}
-
-
-@dataclass
-class Funding(BASE, BaseModel):
-    """Model for the funding sources."""
-
-    __tablename__ = "funding"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    agency: Mapped[str] = mapped_column(String(512))
-    division: Mapped[str] = mapped_column(String(512))
-    grant_number: Mapped[str] = mapped_column(String(512))
-
-    def __post_init__(self) -> None:
-        self._columns = {"id": self.id, "agency": self.agency, "division": self.division, "grant_number": self.grant_number}
-
-
-@dataclass
 class Run(BASE, BaseModel):
     """Model for the beamtime runs."""
 
@@ -210,6 +92,19 @@ class Technique(BASE, BaseModel):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(512))
+
+    def __post_init__(self) -> None:
+        self._columns = {"id": self.id, "name": self.name}
+
+
+@dataclass
+class Station(BASE, BaseModel):
+    """Model for the stations."""
+
+    __tablename__ = "station"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
 
     def __post_init__(self) -> None:
         self._columns = {"id": self.id, "name": self.name}
@@ -258,24 +153,6 @@ class Person(BASE, BaseModel):
 
 
 @dataclass
-class Proposal(BASE, BaseModel):
-    """Model for the proposals."""
-
-    __tablename__ = "proposal"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    title: Mapped[str] = mapped_column(Text)
-    spokesperson_id: Mapped[int] = mapped_column(Integer, ForeignKey("person.id"))
-
-    def __post_init__(self) -> None:
-        self._columns = {
-            "id": self.id,
-            "title": self.title,
-            "spokesperson_id": self.spokesperson_id,
-        }
-
-
-@dataclass
 class Experiment(BASE, BaseModel):
     """Model for the experiments."""
 
@@ -296,10 +173,10 @@ class Experiment(BASE, BaseModel):
     end_date: Mapped[datetime.datetime] = mapped_column(DateTime)
     user_folder: Mapped[str] = mapped_column(Text)
     data_doi: Mapped[str] = mapped_column(Text)
-    pvlog_template_file: Mapped[str] = mapped_column(Text)
     esaf_pdf_file: Mapped[str] = mapped_column(Text)
     proposal_pdf_file: Mapped[str] = mapped_column(Text)
     folder_status_id: Mapped[int] = mapped_column(Integer)
+    process_status: Mapped[Enum] = mapped_column(Enum("new", "processed", "modified", name="experiement_status", create_type=True))
 
     def __post_init__(self) -> None:
         self._columns = {
@@ -318,91 +195,8 @@ class Experiment(BASE, BaseModel):
             "end_date": self.end_date,
             "user_folder": self.user_folder,
             "data_doi": self.data_doi,
-            "pvlog_template_file": self.pvlog_template_file,
             "esaf_pdf_file": self.easf_pdf_file,
             "proposal_pdf_file": self.proposal_pdf_file,
             "folder_status_id": self.folder_status_id,
+            "process_status": self.process_status,
         }
-
-
-@dataclass
-class ExperimentPerson(BASE, BaseModel):
-    """Model for the experiment persons."""
-
-    __tablename__ = "experiment_person"
-    __table_args__ = (PrimaryKeyConstraint("experiment_id", "person_id"),)
-
-    experiment_id: Mapped[int] = mapped_column(Integer, ForeignKey("experiment.id"))
-    person_id: Mapped[int] = mapped_column(Integer, ForeignKey("person.id"))
-    user_type_id: Mapped[int] = mapped_column(Integer, ForeignKey("user_type.id"))
-
-    def __post_init__(self) -> None:
-        self._columns = {"experiment_id": self.experiment_id, "person_id": self.person_id, "user_type_id": self.user_type_id}
-
-
-@dataclass
-class ExperimentTechnique(BASE, BaseModel):
-    """Model for the experiment techniques."""
-
-    __tablename__ = "experiment_technique"
-    __table_args__ = (PrimaryKeyConstraint("experiment_id", "technique_id"),)
-
-    experiment_id: Mapped[int] = mapped_column(Integer, ForeignKey("experiment.id"))
-    technique_id: Mapped[int] = mapped_column(Integer, ForeignKey("technique.id"))
-
-    def __post_init__(self) -> None:
-        self._columns = {"experiment_id": self.experiment_id, "technique_id": self.technique_id}
-
-
-@dataclass
-class ExperimentFunding(BASE, BaseModel):
-    """Model for the experiment fundings."""
-
-    __tablename__ = "experiment_funding"
-    __table_args__ = (PrimaryKeyConstraint("experiment_id", "funding_id"),)
-
-    experiment_id: Mapped[int] = mapped_column(Integer, ForeignKey("experiment.id"))
-    funding_id: Mapped[int] = mapped_column(Integer, ForeignKey("funding.id"))
-
-    def __post_init__(self) -> None:
-        self._columns = {"experiment_id": self.experiment_id, "funding_id": self.funding_id}
-
-
-@dataclass
-class ExperimentAcknowledgment(BASE, BaseModel):
-    """Model for the experiment acknowledgments."""
-
-    __tablename__ = "experiment_acknowledgment"
-    __table_args__ = (PrimaryKeyConstraint("experiment_id", "acknowledgment_id"),)
-
-    experiment_id: Mapped[int] = mapped_column(Integer, ForeignKey("experiment.id"))
-    acknowledgment_id: Mapped[int] = mapped_column(Integer, ForeignKey("acknowledgment.id"))
-
-    def __post_init__(self) -> None:
-        self._columns = {"experiment_id": self.experiment_id, "acknowledgment_id": self.acknowledgment_id}
-
-
-@dataclass
-class FolderQueue(BASE, BaseModel):
-    """Model for the folder queue."""
-
-    __tablename__ = "folder_queue"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    experiment_id: Mapped[int] = mapped_column(Integer, ForeignKey("experiment.id"))
-    status_id: Mapped[int] = mapped_column(Integer)
-    modify_time: Mapped[datetime.datetime] = mapped_column(DateTime, default=datetime.datetime.now)
-
-    def __post_init__(self) -> None:
-        self._columns = {"id": self.id, "experiment_id": self.experiment_id, "status_id": self.status_id, "modify_time": self.modify_time}
-
-
-@dataclass
-class BaseDir(BASE, BaseModel):
-    """Model for the base directory table for each program."""
-
-    __tablename__ = "base_dir"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    beamline_id: Mapped[int] = mapped_column(Integer, ForeignKey("beamline.id"))
-    name: Mapped[str] = mapped_column(Text, nullable=False)
