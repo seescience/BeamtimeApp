@@ -14,8 +14,6 @@
 
 from flask import Blueprint, render_template
 
-from beamtime_app import beamline_config
-
 
 # Create a Blueprint for the beamtime routes
 beamtime = Blueprint("beamtime", __name__)
@@ -23,4 +21,4 @@ beamtime = Blueprint("beamtime", __name__)
 
 @beamtime.route("/")
 def home_route():
-    return render_template("index.html", beamline=beamline_config.beamline, base_path=beamline_config.default_path, pvlog_config=beamline_config.pvlog_config)
+    return render_template("layout.html")

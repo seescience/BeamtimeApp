@@ -19,14 +19,11 @@ from pathlib import Path
 
 from flask import Flask
 
-from beamtime_app.config import Config, BeamlineConfig, DatabaseConfig
+from beamtime_app.config import Config, DatabaseConfig
 
 
-__all__ = ["create_flask_app", "beamline_config", "database_config"]
+__all__ = ["create_flask_app", "database_config"]
 
-
-# Get the beamline specific environment variables
-beamline_config = BeamlineConfig()
 
 # Create the database config instance
 database_config = DatabaseConfig()
