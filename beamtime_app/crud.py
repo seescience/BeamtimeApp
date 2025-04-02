@@ -14,8 +14,10 @@
 
 from sqlalchemy.orm import Session
 from sqlalchemy.future import select
+from sqlalchemy import insert
+from typing import List, Dict, Any
 
-from beamtime_app.models import BaseModel
+from beamtime_app.models import BaseModel, Queue
 from beamtime_app.database import session_scope, DBException
 from beamtime_app.utils import to_dictionary
 
@@ -40,3 +42,29 @@ def get_all_entries(model: BaseModel):
             print(e)
 
     return entries
+
+
+def add_to_queue(rows: List[Dict[str, Any]]) -> Dict[str, int]:
+    """Adds multiple rows to the queue table."""
+    success_count = 0
+    failure_count = 0
+
+    # Convert "N/A" values to None and handle acknowledgments as a comma-separated string
+    sanitized_rows = [
+        {
+            key: (None if value == "N/A" else ",".join(map(str, value)) if key == "acknowledgments" and isinstance(value, list) else value)
+            for key, value in row.items()
+        }
+        for row in rows
+    ]
+
+    with session_scope() as session:
+        try:
+            session.execute(insert(Queue), sanitized_rows)
+            session.commit()
+            success_count = len(sanitized_rows)
+        except Exception as e:
+            print(f"Failed to add rows to queue: {e}")
+            failure_count = len(sanitized_rows)
+
+    return {"success": success_count, "failure": failure_count}

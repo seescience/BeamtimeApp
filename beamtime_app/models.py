@@ -22,7 +22,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from beamtime_app.database import BASE
 
 
-__all__ = ["Info", "Run", "Beamline", "Technique", "Station", "Acknowledgment", "Person", "Experiment"]
+__all__ = ["Info", "Run", "Beamline", "Technique", "Station", "Acknowledgment", "Person", "Experiment", "Queue"]
 
 
 class BaseModel:
@@ -199,4 +199,32 @@ class Experiment(BASE, BaseModel):
             "proposal_pdf_file": self.proposal_pdf_file,
             "folder_status_id": self.folder_status_id,
             "process_status": self.process_status,
+        }
+
+
+@dataclass
+class Queue(BASE, BaseModel):
+    """Model for the queue."""
+
+    __tablename__ = "queue"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    experiment_number: Mapped[int] = mapped_column(Integer)
+    title: Mapped[str] = mapped_column(Text)
+    data_path: Mapped[str] = mapped_column(Text)
+    pvlog_path: Mapped[str] = mapped_column(Text)
+    doi: Mapped[bool] = mapped_column()
+    proposal_number: Mapped[int] = mapped_column(Integer)
+    acknowledgments: Mapped[str] = mapped_column(Text)
+
+    def __post_init__(self) -> None:
+        self._columns = {
+            "id": self.id,
+            "experiment_number": self.experiment_number,
+            "title": self.title,
+            "data_path": self.data_path,
+            "pvlog_path": self.pvlog_path,
+            "doi": self.doi,
+            "proposal_number": self.proposal_number,
+            "acknowledgments": self.acknowledgments,
         }
