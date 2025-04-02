@@ -52,7 +52,6 @@ dependencies = [
 development = [
     "black>=25.1.0",
     "flake8>=7.1.1",
-    "mypy>=1.15.0",
     "pre-commit>=4.1.0",
     "setuptools>=75.8.0",
     "setuptools-scm>=8.1.0"
@@ -84,17 +83,3 @@ exclude = """
 [tool.flake8]
 exclude = ".git,__pycache__,build,dist,.venv,.tox,.eggs"
 max-line-length = 160
-
-[tool.mypy]
-mypy_path = "beamtime_app"
-check_untyped_defs = true
-disallow_any_generics = true
-ignore_missing_imports = true
-no_implicit_optional = true
-show_error_codes = true
-strict_equality = true
-warn_redundant_casts = true
-warn_return_any = true
-warn_unreachable = true
-warn_unused_configs = true
-no_implicit_reexport = true
