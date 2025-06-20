@@ -18,7 +18,6 @@ import subprocess
 
 from beamtime_app import create_flask_app
 
-
 app = create_flask_app()
 
 
@@ -27,14 +26,14 @@ def main() -> None:
     # Parse command line arguments
     parser = argparse.ArgumentParser(description="Beamtime App")
     parser.add_argument("-d", "--debug", action="store_true", help="Enable debug")
-    parser.add_argument("-p", "--port", type=int, help="Port to run the server on. Default port is 5000.")
+    parser.add_argument( "-p", "--port", type=int, help="Port to run the server on. Default port is 5000.")
     args = parser.parse_args()
 
     # Run the Flask app
     if args.debug:
         app.run(host="0.0.0.0", port=args.port if args.port else 5000, debug=True)
     else:
-        subprocess.run(["gunicorn", "-c", "beamtimeapp/gunicorn_config.py", "BeamtimeApp:app"])
+        subprocess.run(["gunicorn", "-c", "beamtimeapp/gunicorn_config.py", "BeamtimeApp:app"], check=False)
 
 
 if __name__ == "__main__":
