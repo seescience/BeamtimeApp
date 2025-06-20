@@ -21,6 +21,10 @@ __pycache__/
 dist/
 build/
 
+# Python virtual environments
+venv/
+.venv/
+
 # OS generated files
 .DS_Store
 ._*
