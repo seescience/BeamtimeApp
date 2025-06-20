@@ -13,15 +13,8 @@
 # ----------------------------------------------------------------------------------
 
 repos:
-  - repo: https://github.com/psf/black
-    rev: 25.1.0
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    # uv version.
+    rev: 0.7.13
     hooks:
-      - id: black
-        language_version: python3.13
-        args: ["--config=pyproject.toml"]
-
-  - repo: https://github.com/pycqa/flake8
-    rev: 7.1.1
-    hooks:
-      - id: flake8
-        additional_dependencies: ["Flake8-pyproject"]
+      - id: uv-export
