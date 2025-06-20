@@ -14,7 +14,7 @@
 
 [project]
 name = "BeamtimeApp"
-version = "0.0.1"
+version = "0.1.0"
 authors = [
     {name = "Christofanis Skordas", email = "55315750+skordaschristofanis@users.noreply.github.com"}
 ]
