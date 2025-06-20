@@ -17,4 +17,4 @@ repos:
     # uv version.
     rev: 0.7.13
     hooks:
-      - id: uv-export
+      - id: uv-lock

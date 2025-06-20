@@ -12,4 +12,4 @@
 # Copyright (C) 2025 NSF SEES, USA
 # ----------------------------------------------------------------------------------
 
-/opt/miniconda3/envs/beamtimeappENV/bin/python BeamtimeApp.py -d -p 5001
+uv run BeamtimeApp.py -d -p 5001
