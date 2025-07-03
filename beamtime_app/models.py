@@ -194,7 +194,7 @@ class Experiment(BASE, BaseModel):
             "end_date": self.end_date,
             "user_folder": self.user_folder,
             "data_doi": self.data_doi,
-            "esaf_pdf_file": self.easf_pdf_file,
+            "esaf_pdf_file": self.esaf_pdf_file,
             "proposal_pdf_file": self.proposal_pdf_file,
             "folder_status_id": self.folder_status_id,
             "process_status": self.process_status,
