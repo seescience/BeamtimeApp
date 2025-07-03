@@ -3,18 +3,25 @@
 <div class="beamtime-container">
     
     <!-- Title and Dropdowns Section -->
-    <div class="beamtime-header d-flex justify-content-between align-items-center">
-        <h4>GSECARS Beamtime</h4>
-        <span class="last-modified">Last Update: {{ last_modified or "N/A" }}</span>
+    <div class="beamtime-header">
+        <h4>Beamtime</h4>
+        <div class="header-right">
+            <span class="last-modified">Last Update: {{ last_modified or "N/A" }}</span>
+            <div class="theme-switcher">
+                <button class="theme-switcher-button" id="themeSwitcher" aria-label="Toggle theme">
+                    <i class="bi bi-sun-fill" id="themeIcon"></i>
+                </button>
+            </div>
+        </div>
     </div>
-    <form id="filterForm">
+    <form id="filterForm" method="get" action="/">
         <div class="row">
 
             <!-- Run dropdown -->
             <div class="col-md-3">
                 <label for="runSelect"><strong>Run</strong></label>
-                <select id="runSelect" name="run" class="form-control" onchange="submitFilterForm()">
-                    <option value="" {% if selected_run is none %}selected{% endif %}>All</option>
+                <select id="runSelect" name="run" class="form-control">
+                    <option value="">All</option>
                     {% for run in runs %}
                     <option value="{{ run.id }}" {% if run.id == selected_run %}selected{% endif %}>{{ run.name }}</option>
                     {% endfor %}
@@ -24,10 +31,10 @@
             <!-- Beamline dropdown -->
             <div class="col-md-3">
                 <label for="beamlineSelect"><strong>Beamline</strong></label>
-                <select id="beamlineSelect" name="beamline" class="form-control" onchange="submitFilterForm()">
+                <select id="beamlineSelect" name="beamline" class="form-control">
                     <option value="">All</option>
                     {% for beamline in beamlines %}
-                    <option value="{{ beamline.id }}" {% if beamline.id == request.args.get('beamline')|int %}selected{% endif %}>{{ beamline.name }}</option>
+                    <option value="{{ beamline.id }}" {% if beamline.id == selected_beamline %}selected{% endif %}>{{ beamline.name }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -35,10 +42,10 @@
             <!-- Station dropdown -->
             <div class="col-md-3">
                 <label><strong>Station</strong></label>
-                <select class="form-control">
+                <select class="form-control" id="stationSelect" name="station">
                     <option value="">All</option>
                     {% for station in stations %}
-                    <option value="{{ station.id }}">{{ station.name }}</option>
+                    <option value="{{ station.id }}" {% if station.id == selected_station %}selected{% endif %}>{{ station.name }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -46,10 +53,10 @@
             <!-- Technique dropdown -->
             <div class="col-md-3">
                 <label><strong>Technique</strong></label>
-                <select class="form-control">
+                <select class="form-control" id="techniqueSelect" name="technique">
                     <option value="">All</option>
                     {% for technique in techniques %}
-                    <option value="{{ technique.id }}">{{ technique.name }}</option>
+                    <option value="{{ technique.id }}" {% if technique.id == selected_technique %}selected{% endif %}>{{ technique.name }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -61,13 +68,13 @@
         <h5 class="available-title">Available Experiments</h5>
     </div>
     <div class="available-table">
-        <form id="selectAllForm" method="POST" action="/select_all_available">
+        <form id="selectAllForm">
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead class="thead-dark">
                         <tr>
                             <th scope="col">
-                                <input type="checkbox" id="selectAllAvailable" onclick="toggleSelectAll('availableTableBody', this.checked)">
+                                <input type="checkbox" id="selectAllAvailable">
                             </th>
                             <th scope="col">Title</th>
                             <th scope="col">Experiment</th>
@@ -77,9 +84,15 @@
                     </thead>
                     <tbody id="availableTableBody">
                         {% for experiment in experiments %}
-                        <tr class="experiment-row" data-run="{{ experiment.run_id }}" data-beamline="{{ experiment.beamline_id }}" data-user-folder="{{ experiment.user_folder or '' }}">
+                        <tr class="experiment-row" 
+                            data-run="{{ experiment.run_id }}" 
+                            data-beamline="{{ experiment.beamline_id }}" 
+                            data-user-folder="{{ experiment.user_folder or '' }}">
                             <td>
-                                <input type="checkbox" class="select-experiment" name="selected_experiments" value="{{ experiment.id }}" {% if experiment.selected %}checked{% endif %}>
+                                <input type="checkbox" class="select-experiment" 
+                                       name="selected_experiments" 
+                                       value="{{ experiment.id }}" 
+                                       {% if experiment.selected %}checked{% endif %}>
                             </td>
                             <td>{{ experiment.title }}</td>
                             <td>{{ experiment.id }}</td>
@@ -97,18 +110,18 @@
     <div class="table-header-container mt-4">
         <h5 class="selected-title">Selected/New Experiments</h5>
         <div class="button-group">
-            <button id="moveDown" class="btn btn-secondary" onclick="moveToSelected()">
+            <button id="moveDown" class="btn btn-secondary">
                 <i class="bi bi-arrow-down"></i>
             </button>
-            <button id="moveUp" class="btn btn-secondary" onclick="deleteSelectedRows()">
+            <button id="moveUp" class="btn btn-secondary">
                 <i class="bi bi-arrow-up"></i>
             </button>
             <button id="addNewRow" class="btn btn-secondary">Add New</button>
-            <button id="deleteRow" class="btn btn-secondary" onclick="deleteSelectedRows()">
+            <button id="deleteRow" class="btn btn-secondary">
                 Delete
                 <span id="deleteCount" class="badge bg-dark text-light d-none">0</span>
             </button>
-            <button id="createUpdate" class="btn btn-secondary" onclick="createOrUpdate()">
+            <button id="createUpdate" class="btn btn-secondary">
                 Create/Update
                 <span id="createUpdateCount" class="badge bg-dark text-light d-none">0</span>
             </button>
@@ -120,7 +133,7 @@
             <table class="table table-hover">
                 <thead class="thead-dark">
                     <tr>
-                        <th scope="col"><input type="checkbox" id="selectAllSelected" onclick="selectAll('selected')"></th>
+                        <th scope="col"><input type="checkbox" id="selectAllSelected"></th>
                         <th scope="col">Title</th>
                         <th scope="col">Data Path</th>
                         <th scope="col">PVLogger Path</th>
@@ -149,6 +162,9 @@
                 <div class="modal-body">
                     <label for="dataPathInput" class="form-label">Data Path:</label>
                     <input type="text" id="dataPathInput" class="form-control" />
+                    <div class="mt-2">
+                        <span id="pathValidationMessage" class="small"></span>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -173,6 +189,34 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-primary" id="savePvLoggerPathButton">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for editing Acknowledgments -->
+    <div class="modal fade" id="acknowledgementsModal" tabindex="-1" aria-labelledby="acknowledgementsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="acknowledgementsModalLabel">Select Acknowledgments</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="acknowledgments-list">
+                        {% for ack in acknowledgments %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="{{ ack.id }}" id="ack{{ ack.id }}">
+                            <label class="form-check-label" for="ack{{ ack.id }}">
+                                {{ ack.title }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveAcknowledgmentsButton">Save</button>
                 </div>
             </div>
         </div>

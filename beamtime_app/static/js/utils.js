@@ -12,374 +12,287 @@
  * ---------------------------------------------------------------------------------- */
 
 let acknowledgmentOptions = [];
+let dataPathTemplate = '';
 
-// Fetch acknowledgment options from the backend
+// Fetch acknowledgment options from the server
 function fetchAcknowledgmentOptions() {
-    fetch('/get_acknowledgments')
-        .then(response => response.json())
+    fetch('/api/v1/get_acknowledgments')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch acknowledgments');
+            }
+            return response.json();
+        })
         .then(data => {
             acknowledgmentOptions = data;
+
+            // Update the acknowledgments list in the modal
+            const acknowledgementsListContainer = document.querySelector('.acknowledgments-list');
+            if (!acknowledgementsListContainer) return;
+
+            // Clear existing options
+            acknowledgementsListContainer.innerHTML = '';
+
+            data.forEach(ack => {
+                const formCheck = document.createElement('div');
+                formCheck.className = 'form-check';
+
+                formCheck.innerHTML = `
+                    <input class="form-check-input" type="checkbox" value="${ack.id}" id="ack${ack.id}">
+                    <label class="form-check-label" for="ack${ack.id}">
+                        ${ack.title}
+                    </label>
+                `;
+
+                acknowledgementsListContainer.appendChild(formCheck);
+            });
         })
         .catch(error => console.error('Error fetching acknowledgment options:', error));
 }
 
-// Update the badges for the "Delete" and "Create/Update" buttons
+// Toggle all checkboxes in a table
+function toggleSelectAll(tableId, checked) {
+    const tableBody = document.getElementById(tableId);
+    if (tableBody) {
+        tableBody.querySelectorAll('.select-experiment').forEach(checkbox => {
+            checkbox.checked = checked;
+        });
+    }
+}
+
+// Update badge counts for delete and create/update buttons
 function updateBadges() {
+    const selectedCount = document.querySelectorAll('#selectedTableBody .select-experiment:checked').length;
+    const deleteCount = document.getElementById('deleteCount');
+    const createUpdateCount = document.getElementById('createUpdateCount');
+
+    if (deleteCount) {
+        deleteCount.textContent = selectedCount;
+        deleteCount.classList.toggle('d-none', selectedCount === 0);
+    }
+
+    if (createUpdateCount) {
+        // Use selectedCount instead of totalRows
+        createUpdateCount.textContent = selectedCount;
+        createUpdateCount.classList.toggle('d-none', selectedCount === 0);
+    }
+}
+
+// Delete selected rows from the table
+function deleteSelectedRows() {
     const selectedTableBody = document.getElementById('selectedTableBody');
-    const deleteCountBadge = document.getElementById('deleteCount');
-    const createUpdateCountBadge = document.getElementById('createUpdateCount');
+    if (!selectedTableBody) return;
 
-    if (selectedTableBody) {
-        const selectedRowsCount = selectedTableBody.querySelectorAll('tr').length;
-        const checkedRowsCount = selectedTableBody.querySelectorAll('.select-experiment:checked').length;
-
-        // Update the delete badge
-        if (deleteCountBadge) {
-            if (checkedRowsCount > 0) {
-                deleteCountBadge.textContent = checkedRowsCount;
-                deleteCountBadge.classList.remove('d-none');
-            } else {
-                deleteCountBadge.classList.add('d-none');
-            }
-        }
-
-        // Update the create/update badge
-        if (createUpdateCountBadge) {
-            if (selectedRowsCount > 0) {
-                createUpdateCountBadge.textContent = selectedRowsCount;
-                createUpdateCountBadge.classList.remove('d-none');
-            } else {
-                createUpdateCountBadge.classList.add('d-none');
-            }
-        }
-    }
-}
-
-// Attach event listeners to update badges when rows are selected/deselected
-function attachRowSelectionListeners() {
-    const selectedTableBody = document.getElementById('selectedTableBody');
-    if (selectedTableBody) {
-        selectedTableBody.addEventListener('change', event => {
-            if (event.target.classList.contains('select-experiment')) {
-                updateBadges();
-            }
-        });
-    }
-
-    // Attach event listener to the "Select All" checkbox for the selected table
-    const selectAllSelected = document.getElementById('selectAllSelected');
-    if (selectAllSelected) {
-        selectAllSelected.addEventListener('change', () => {
-            toggleSelectAll('selectedTableBody', selectAllSelected.checked);
-            updateBadges();
-        });
-    }
-}
-
-// Add a new row to the "Selected/New Experiments" table
-function addNewRow() {
-    const addNewRowButton = document.getElementById('addNewRow');
-    if (addNewRowButton) {
-        addNewRowButton.addEventListener('click', () => {
-            const selectedTableBody = document.getElementById('selectedTableBody');
-            if (selectedTableBody) {
-                selectedTableBody.appendChild(createRow());
-                updateBadges();
-            } else {
-                console.error('Selected table body not found.');
-            }
-        });
-    }
-}
-
-// Create a new row for the "Selected/New Experiments" table
-function createRow() {
-    const row = document.createElement('tr');
-    row.innerHTML = `
-        <td><input type="checkbox" class="select-experiment" checked></td>
-        <td><input type="text" class="form-control" placeholder="Title"></td>
-        <td><input type="text" class="form-control editable-data-path" value="" style="width: 100%;"></td> <!-- Data Path -->
-        <td><input type="text" class="form-control editable-pvlogger-path" value="" style="width: 100%;"></td> <!-- PVLogger Path -->
-        <td>
-            <div class="ack-container">
-                <div class="ack-display"></div>
-                <select class="form-control ack-dropdown">
-                    <option value="" disabled selected>Add Acknowledgment</option>
-                    ${acknowledgmentOptions.map(ack => `<option value="${ack.id}">${ack.title}</option>`).join('')}
-                </select>
-            </div>
-        </td>
-        <td><input type="checkbox" class="doi-checkbox" checked></td> <!-- DOI -->
-        <td><input type="text" class="form-control" placeholder="Experiment"></td>
-        <td><input type="text" class="form-control" placeholder="Proposal"></td>
-        <td>New</td> <!-- Status -->
-    `;
-    initializeAcknowledgmentDropdown(row.querySelector('.ack-dropdown'));
-    return row;
-}
-
-// Initialize the acknowledgment dropdown for a specific row
-function initializeAcknowledgmentDropdown(dropdown) {
-    dropdown.addEventListener('change', () => {
-        const selectedOption = dropdown.options[dropdown.selectedIndex];
-        const ackContainer = dropdown.closest('.ack-container');
-        const display = ackContainer.querySelector('.ack-display');
-
-        if (selectedOption.value) {
-            const existingAck = Array.from(display.children).find(
-                ack => ack.dataset.ackId === selectedOption.value
-            );
-            if (!existingAck) {
-                const ackItem = document.createElement('span');
-                ackItem.className = 'ack-item';
-                ackItem.dataset.ackId = selectedOption.value;
-                ackItem.innerHTML = `${selectedOption.text} <button onclick="removeAcknowledgment(this)">x</button>`;
-                display.appendChild(ackItem);
-            }
-            dropdown.selectedIndex = 0;
-        }
+    const checkboxes = selectedTableBody.querySelectorAll('.select-experiment:checked');
+    checkboxes.forEach(checkbox => {
+        checkbox.closest('tr').remove();
     });
-}
 
-// Remove an acknowledgment from the widget
-function removeAcknowledgment(button) {
-    const ackItem = button.closest('.ack-item');
-    ackItem.remove();
-}
-
-// Add functionality to move rows between tables
-function addMoveButtons() {
-    const moveDownButton = document.getElementById('moveDown');
-    const moveUpButton = document.getElementById('moveUp');
-
-    if (moveDownButton) {
-        moveDownButton.addEventListener('click', () => moveRows('availableTableBody', 'selectedTableBody'));
-    }
-    if (moveUpButton) {
-        moveUpButton.addEventListener('click', () => moveRows('selectedTableBody', 'availableTableBody'));
-    }
+    updateBadges();
 }
 
 // Move rows between tables
 function moveRows(sourceTableId, targetTableId) {
     const sourceTableBody = document.getElementById(sourceTableId);
     const targetTableBody = document.getElementById(targetTableId);
+    if (!sourceTableBody || !targetTableBody) return;
 
-    if (!sourceTableBody || !targetTableBody) {
-        console.error('Source or target table body not found.');
-        return;
-    }
-
-    const selectedRows = sourceTableBody.querySelectorAll('.select-experiment:checked');
-
-    selectedRows.forEach(checkbox => {
-        const row = checkbox.closest('tr');
-        const newRow = document.createElement('tr');
-
-        // Map values from the source row to the correct fields in the target row
-        const title = row.querySelector('td:nth-child(2)').innerText.trim();
-        const experimentId = row.querySelector('td:nth-child(3)').innerText.trim();
-        const proposal = row.querySelector('td:nth-child(4)').innerText.trim();
-        const status = row.querySelector('td:nth-child(5)').innerText.trim();
-        const userFolder = row.dataset.userFolder || '';
-
-        newRow.innerHTML = `
-            <td><input type="checkbox" class="select-experiment" checked></td>
-            <td><input type="text" class="form-control" value="${title}" placeholder="Title"></td> <!-- Title -->
-            <td><input type="text" class="form-control editable-data-path" value="${userFolder}" style="width: 100%;"></td> <!-- Data Path -->
-            <td><input type="text" class="form-control editable-pvlogger-path" value="" style="width: 100%;"></td> <!-- PVLogger Path -->
-            <td>
-                <div class="ack-container">
-                    <div class="ack-display"></div>
-                    <select class="form-control ack-dropdown">
-                        <option value="" disabled selected>Add Acknowledgment</option>
-                        ${acknowledgmentOptions.map(ack => `<option value="${ack.id}">${ack.title}</option>`).join('')}
-                    </select>
-                </div>
-            </td>
-            <td><input type="checkbox" class="doi-checkbox" checked></td> <!-- DOI -->
-            <td><input type="text" class="form-control" value="${experimentId}" placeholder="Experiment"></td> <!-- Experiment -->
-            <td><input type="text" class="form-control" value="${proposal}" placeholder="Proposal"></td> <!-- Proposal -->
-            <td>${status}</td> <!-- Status -->
-        `;
-
-        initializeAcknowledgmentDropdown(newRow.querySelector('.ack-dropdown'));
-        targetTableBody.appendChild(newRow);
-        row.remove();
-    });
-
-    updateBadges();
-}
-
-// Attach the "Move Down" button functionality
-document.getElementById('moveDown').addEventListener('click', () => {
-    moveRows('availableTableBody', 'selectedTableBody');
-});
-
-// Add functionality to toggle "Select All" checkboxes
-function addSelectAllFunctionality() {
-    const selectAllAvailable = document.getElementById('selectAllAvailable');
-    const selectAllSelected = document.getElementById('selectAllSelected');
-
-    if (selectAllAvailable) {
-        selectAllAvailable.addEventListener('change', () => {
-            toggleSelectAll('availableTableBody', selectAllAvailable.checked);
+    const selectedRows = Array.from(sourceTableBody.querySelectorAll('.select-experiment:checked'));
+    
+    // If moving to selected table, ensure we have the current data path template
+    if (targetTableId === 'selectedTableBody') {
+        ensureDataPathTemplate().then(() => {
+            processRowMove();
+        }).catch(() => {
+            // Proceed without template if fetch fails
+            processRowMove();
         });
+    } else {
+        processRowMove();
     }
 
-    if (selectAllSelected) {
-        selectAllSelected.addEventListener('change', () => {
-            toggleSelectAll('selectedTableBody', selectAllSelected.checked);
-            updateBadges();
+    function processRowMove() {
+        selectedRows.forEach(checkbox => {
+            const row = checkbox.closest('tr');
+            
+            if (targetTableId === 'availableTableBody') {
+                // Only move back rows that came from the available table
+                // Check if the status is "New" which indicates it was manually created
+                const status = row.querySelector('td:nth-child(9)').textContent.trim();
+                if (status === 'New') {
+                    // Skip moving manually created rows
+                    return;
+                }
+
+                // Moving back to available table - restore original format
+                const title = row.querySelector('td:nth-child(2) input').value.trim();
+                const experimentId = row.querySelector('td:nth-child(7) input').value.trim();
+                const proposal = row.querySelector('td:nth-child(8) input').value.trim();
+                const userFolder = row.querySelector('td:nth-child(3) input').value.trim();
+
+                const newRow = document.createElement('tr');
+                newRow.className = 'experiment-row';
+                newRow.dataset.userFolder = userFolder;
+                newRow.innerHTML = `
+                    <td>
+                        <input type="checkbox" class="select-experiment" 
+                               name="selected_experiments" 
+                               value="${experimentId}">
+                    </td>
+                    <td>${title}</td>
+                    <td>${experimentId}</td>
+                    <td>${proposal}</td>
+                    <td>${status}</td>
+                `;
+                targetTableBody.appendChild(newRow);
+                row.remove();
+            } else {
+                // Moving to selected table - convert to editable format
+                const title = row.querySelector('td:nth-child(2)').textContent.trim();
+                const experimentId = row.querySelector('td:nth-child(3)').textContent.trim();
+                const proposal = row.querySelector('td:nth-child(4)').textContent.trim();
+                const status = row.querySelector('td:nth-child(5)').textContent.trim();
+                const userFolder = row.dataset.userFolder || '';
+                const runId = row.dataset.run || '';
+
+                // Extract run number from runId (e.g., "2025-1" -> "1")
+                const runNumber = runId.includes('-') ? runId.split('-').pop() : runId;
+
+                // Use template path with run number context
+                const formattedDataPath = dataPathTemplate ? 
+                    formatDataPath(dataPathTemplate, { runId: runNumber }) : 
+                    userFolder;
+
+                const newRow = document.createElement('tr');
+                newRow.innerHTML = `
+                    <td><input type="checkbox" class="select-experiment" checked></td>
+                    <td><input type="text" class="form-control" value="${title}" placeholder="Title"></td>
+                    <td><input type="text" class="form-control editable-data-path" value="${formattedDataPath}" style="width: 100%;"></td>
+                    <td><input type="text" class="form-control editable-pvlogger-path" value="" style="width: 100%;"></td>
+                    <td>
+                        <input type="text" class="form-control editable-acknowledgments" readonly placeholder="Click to add acknowledgments">
+                        <div class="acknowledgments-tooltip"></div>
+                        <input type="hidden" class="acknowledgments-data">
+                    </td>
+                    <td><input type="checkbox" class="doi-checkbox" checked></td>
+                    <td><input type="text" class="form-control" value="${experimentId}" placeholder="Experiment"></td>
+                    <td><input type="text" class="form-control" value="${proposal}" placeholder="Proposal"></td>
+                    <td>${status}</td>
+                `;
+                targetTableBody.appendChild(newRow);
+                row.remove();
+            }
         });
+
+        updateBadges();
     }
 }
 
-// Toggle the selection of all checkboxes in a table body
-function toggleSelectAll(tableBodyId, isChecked) {
-    const tableBody = document.getElementById(tableBodyId);
-    if (tableBody) {
-        tableBody.querySelectorAll('.select-experiment').forEach(checkbox => {
-            checkbox.checked = isChecked;
-        });
-    }
-    updateBadges();
-}
-
-// Handle the form submission as application/json
-function submitFilterForm() {
-    const runSelect = document.getElementById('runSelect');
-    const beamlineSelect = document.getElementById('beamlineSelect');
-    const availableTableBody = document.getElementById('availableTableBody');
-
-    const data = {
-        run: runSelect.value,
-        beamline: beamlineSelect.value
-    };
-
-    fetch('/filter_experiments', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(experiments => {
-        availableTableBody.innerHTML = '';
-
-        experiments.forEach(experiment => {
-            const row = document.createElement('tr');
-            row.className = 'experiment-row';
-            row.setAttribute('data-run', experiment.run_id);
-            row.setAttribute('data-beamline', experiment.beamline_id);
-            row.innerHTML = `
-                <td><input type="checkbox" class="select-experiment"></td>
-                <td>${experiment.title}</td>
-                <td>${experiment.id}</td>
-                <td>${experiment.proposal || 'N/A'}</td>
-                <td>${experiment.process_status || 'N/A'}</td>
-            `;
-            availableTableBody.appendChild(row);
-        });
-    })
-    .catch(error => console.error('Error fetching filtered experiments:', error));
-}
-
-// Add functionality to delete selected rows from the "Selected/New Experiments" table
-function deleteSelectedRows() {
-    const selectedTableBody = document.getElementById('selectedTableBody');
-    const availableTableBody = document.getElementById('availableTableBody');
-    const selectedRows = selectedTableBody.querySelectorAll('.select-experiment:checked');
-
-    if (!selectedTableBody || !availableTableBody) {
-        console.error('Selected or available table body not found.');
-        return;
-    }
-
-    selectedRows.forEach(checkbox => {
-        const row = checkbox.closest('tr');
-        const experimentId = row.querySelector('td:nth-child(7) input')?.value.trim();
-        const title = row.querySelector('td:nth-child(2) input')?.value.trim();
-        const proposal = row.querySelector('td:nth-child(8) input')?.value.trim();
-        const status = row.querySelector('td:nth-child(9)')?.innerText.trim();
-
-        if (experimentId && !isNaN(parseInt(experimentId))) {
-            // If the experiment is originally from the database, move it back to the available table
-            const newRow = document.createElement('tr');
-            newRow.className = 'experiment-row';
-            newRow.innerHTML = `
-                <td><input type="checkbox" class="select-experiment"></td>
-                <td>${title}</td> <!-- Title -->
-                <td>${experimentId}</td> <!-- Experiment -->
-                <td>${proposal || 'N/A'}</td> <!-- Proposal -->
-                <td>${status || 'N/A'}</td> <!-- Status -->
-            `;
-            availableTableBody.appendChild(newRow);
-        }
-
-        // Remove the row from the selected table
-        row.remove();
-    });
-
-    updateBadges(); // Update badges after deleting or moving rows
-}
-
-// Attach the "Delete" button functionality
-document.getElementById('deleteRow').addEventListener('click', deleteSelectedRows);
-
-// Initialize the "Delete" and "Move Up" button functionality
-function initializeDeleteAndMoveUpButtons() {
-    const deleteRowButton = document.getElementById('deleteRow');
-    const moveUpButton = document.getElementById('moveUp');
-
-    if (deleteRowButton) {
-        deleteRowButton.addEventListener('click', deleteSelectedRows);
-    }
-    if (moveUpButton) {
-        moveUpButton.addEventListener('click', () => {
-            moveRows('selectedTableBody', 'availableTableBody');
-            updateBadges();
-        });
-    }
-}
-
-let currentDataPathInput = null;
-
-// Initialize the modal for editing Data Path
+// Initialize modal for editing Data Path
 function initializeDataPathModal() {
     const dataPathModal = new bootstrap.Modal(document.getElementById('dataPathModal'));
     const dataPathInput = document.getElementById('dataPathInput');
     const saveDataPathButton = document.getElementById('saveDataPathButton');
+    const pathValidationMessage = document.getElementById('pathValidationMessage');
+    let currentDataPathInput = null;
+    let validationTimeout = null;
 
-    // Attach click event to all existing and future editable data path input boxes
+    // Function to update validation message
+    function updateValidationMessage(exists, valid, message) {
+        if (!pathValidationMessage) return;
+        
+        pathValidationMessage.textContent = message;
+        
+        // Remove existing classes
+        pathValidationMessage.classList.remove('text-success', 'text-warning', 'text-danger', 'text-muted');
+        
+        if (valid === false) {
+            // Invalid path format
+            pathValidationMessage.classList.add('text-danger');
+        } else if (exists === true) {
+            // Path exists - warning
+            pathValidationMessage.classList.add('text-warning');
+        } else if (exists === false) {
+            // Path available - success
+            pathValidationMessage.classList.add('text-success');
+        } else {
+            // Unknown state or validating
+            pathValidationMessage.classList.add('text-muted');
+        }
+    }
+
+    // Function to validate path with debouncing
+    function validatePath() {
+        const path = dataPathInput.value;
+        
+        if (validationTimeout) {
+            clearTimeout(validationTimeout);
+        }
+        
+        if (!path || !path.trim()) {
+            updateValidationMessage(null, null, '');
+            return;
+        }
+        
+        updateValidationMessage(null, null, 'Validating...');
+        
+        validationTimeout = setTimeout(() => {
+            validateDataPath(path)
+                .then(result => {
+                    updateValidationMessage(result.exists, result.valid, result.message);
+                })
+                .catch(error => {
+                    console.error('Validation error:', error);
+                    updateValidationMessage(null, false, 'Validation failed');
+                });
+        }, 500); // 500ms debounce delay
+    }
+
     document.getElementById('selectedTableBody').addEventListener('click', event => {
         const input = event.target.closest('.editable-data-path');
         if (input) {
             currentDataPathInput = input;
             dataPathInput.value = input.value || '';
+            
+            // Clear any existing timeout
+            if (validationTimeout) {
+                clearTimeout(validationTimeout);
+            }
+            
+            // Validate the current path
+            validatePath();
+            
             dataPathModal.show();
         }
     });
 
+    // Add input event listener for real-time validation
+    dataPathInput.addEventListener('input', validatePath);
+
     saveDataPathButton.addEventListener('click', () => {
         if (currentDataPathInput) {
-            const newPath = dataPathInput.value;
-            currentDataPathInput.value = newPath;
+            currentDataPathInput.value = dataPathInput.value;
             dataPathModal.hide();
         }
     });
+
+    // Clear validation when modal is hidden
+    dataPathModal._element.addEventListener('hidden.bs.modal', () => {
+        if (validationTimeout) {
+            clearTimeout(validationTimeout);
+        }
+        updateValidationMessage(null, null, '');
+    });
 }
 
-let currentPvLoggerPathInput = null; // Track the input box being edited for PVLogger Path
-
-// Initialize the modal for editing PVLogger Path
+// TODO: Not fully implemented yet
+// Initialize modal for editing PVLogger Path
 function initializePvLoggerPathModal() {
     const pvLoggerPathModal = new bootstrap.Modal(document.getElementById('pvLoggerPathModal'));
     const pvLoggerPathInput = document.getElementById('pvLoggerPathInput');
     const savePvLoggerPathButton = document.getElementById('savePvLoggerPathButton');
+    let currentPvLoggerPathInput = null;
 
-    // Attach click event to all existing and future editable PVLogger Path input boxes
     document.getElementById('selectedTableBody').addEventListener('click', event => {
         const input = event.target.closest('.editable-pvlogger-path');
         if (input) {
@@ -391,74 +304,416 @@ function initializePvLoggerPathModal() {
 
     savePvLoggerPathButton.addEventListener('click', () => {
         if (currentPvLoggerPathInput) {
-            const newPath = pvLoggerPathInput.value;
-            currentPvLoggerPathInput.value = newPath;
+            currentPvLoggerPathInput.value = pvLoggerPathInput.value;
             pvLoggerPathModal.hide();
         }
     });
 }
 
-// Attach functionality to the "Create/Update" button
-document.getElementById('createUpdate').addEventListener('click', () => {
-    const selectedTableBody = document.getElementById('selectedTableBody');
-    const rows = [];
+// Initialize modal for editing Acknowledgments
+function initializeAcknowledgmentsModal() {
+    const acknowledgementsModal = new bootstrap.Modal(document.getElementById('acknowledgementsModal'));
+    const saveAcknowledgmentsButton = document.getElementById('saveAcknowledgmentsButton');
+    let currentAcknowledgmentsInput = null;
+    let currentAcknowledgmentsData = null;
 
-    selectedTableBody.querySelectorAll('tr').forEach(row => {
-        const title = row.querySelector('td:nth-child(2) input')?.value.trim();
-        const dataPath = row.querySelector('td:nth-child(3) input')?.value.trim();
-        const pvlogPath = row.querySelector('td:nth-child(4) input')?.value.trim();
-        const doi = row.querySelector('td:nth-child(6) input')?.checked;
-        const experimentNumber = row.querySelector('td:nth-child(7) input')?.value.trim();
-        const proposalNumber = row.querySelector('td:nth-child(8) input')?.value.trim();
-        const acknowledgmentIds = Array.from(row.querySelectorAll('.ack-item')).map(ack => ack.dataset.ackId);
-
-        // Skip completely empty rows
-        if (title || dataPath || pvlogPath || doi || experimentNumber || proposalNumber || acknowledgmentIds.length > 0) {
-            rows.push({
-                experiment_number: experimentNumber || null,
-                title: title || null,
-                data_path: dataPath || null,
-                pvlog_path: pvlogPath || null,
-                doi: doi || null,
-                proposal_number: proposalNumber || null,
-                acknowledgments: acknowledgmentIds,
-            });
+    document.querySelector('.acknowledgments-list').addEventListener('click', event => {
+        const formCheck = event.target.closest('.form-check');
+        if (formCheck) {
+            const checkbox = formCheck.querySelector('.form-check-input');
+            if (event.target !== checkbox) {
+                checkbox.checked = !checkbox.checked;
+            }
         }
     });
 
-    fetch('/create_update_queue', {
+    document.getElementById('selectedTableBody').addEventListener('click', event => {
+        const input = event.target.closest('.editable-acknowledgments');
+        if (input) {
+            currentAcknowledgmentsInput = input;
+            currentAcknowledgmentsData = input.nextElementSibling.nextElementSibling;
+            
+            document.querySelectorAll('.acknowledgments-list .form-check-input').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+
+            if (currentAcknowledgmentsData.value) {
+                const selectedAcks = JSON.parse(currentAcknowledgmentsData.value);
+                selectedAcks.forEach(ackId => {
+                    const checkbox = document.getElementById(`ack${ackId}`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                    }
+                });
+            }
+
+            acknowledgementsModal.show();
+        }
+    });
+
+    saveAcknowledgmentsButton.addEventListener('click', () => {
+        if (currentAcknowledgmentsInput && currentAcknowledgmentsData) {
+            const selectedAcks = [];
+            const selectedTitles = [];
+            
+            document.querySelectorAll('.acknowledgments-list .form-check-input:checked').forEach(checkbox => {
+                selectedAcks.push(checkbox.value);
+                selectedTitles.push(checkbox.nextElementSibling.textContent.trim());
+            });
+
+            currentAcknowledgmentsData.value = JSON.stringify(selectedAcks);
+            currentAcknowledgmentsInput.value = selectedTitles.length > 0 
+                ? selectedTitles.length + ' acknowledgment(s) selected'
+                : '';
+            acknowledgementsModal.hide();
+        }
+    });
+}
+
+// Handle Create/Update button click
+function handleCreateUpdate() {
+    const selectedTableBody = document.getElementById('selectedTableBody');
+    if (!selectedTableBody) return;
+
+    const rows = Array.from(selectedTableBody.querySelectorAll('tr')).map(row => {
+        const getValue = (selector) => row.querySelector(selector)?.value?.trim() || null;
+        const getChecked = (selector) => row.querySelector(selector)?.checked || false;
+        
+        const data = {
+            experiment_number: getValue('td:nth-child(7) input'),
+            title: getValue('td:nth-child(2) input'),
+            data_path: getValue('td:nth-child(3) input'),
+            pvlog_path: getValue('td:nth-child(4) input'),
+            doi: getChecked('td:nth-child(6) input'),
+            proposal_number: getValue('td:nth-child(8) input'),
+            acknowledgments: (() => {
+                const ackData = row.querySelector('.acknowledgments-data');
+                if (ackData && ackData.value) {
+                    try {
+                        return JSON.parse(ackData.value);
+                    } catch (e) {
+                        return [];
+                    }
+                }
+                return [];
+            })()
+        };
+
+        return Object.values(data).some(value => 
+            value !== null && value !== false && 
+            (Array.isArray(value) ? value.length > 0 : true)
+        ) ? data : null;
+    }).filter(Boolean);
+
+    if (rows.length === 0) return;
+
+    fetch('/api/v1/create_update_queue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rows })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.failure === 0) {
+            selectedTableBody.innerHTML = '';
+            updateBadges();
+            showNotification('Success', `Successfully added ${result.success} rows to the queue.`);
+        } else {
+            showNotification('Warning', `Added ${result.success} rows to the queue, but ${result.failure} rows failed.`);
+        }
+    })
+    .catch(error => {
+        console.error('Error adding rows to the queue:', error);
+        showNotification('Error', 'An error occurred while adding rows to the queue.');
+    });
+}
+
+// Initialize table handlers
+function initializeTableHandlers() {
+    const buttons = {
+        moveDown: document.getElementById('moveDown'),
+        moveUp: document.getElementById('moveUp'),
+        addNew: document.getElementById('addNewRow'),
+        delete: document.getElementById('deleteRow'),
+        createUpdate: document.getElementById('createUpdate'),
+        selectAllAvailable: document.getElementById('selectAllAvailable'),
+        selectAllSelected: document.getElementById('selectAllSelected')
+    };
+
+    if (buttons.moveDown) {
+        buttons.moveDown.addEventListener('click', () => moveRows('availableTableBody', 'selectedTableBody'));
+    }
+
+    if (buttons.moveUp) {
+        buttons.moveUp.addEventListener('click', () => moveRows('selectedTableBody', 'availableTableBody'));
+    }
+
+    if (buttons.addNew) {
+        buttons.addNew.addEventListener('click', () => {
+            const selectedTableBody = document.getElementById('selectedTableBody');
+            if (selectedTableBody) {
+                // Ensure we have the current data path template before creating new row
+                ensureDataPathTemplate().then(() => {
+                    selectedTableBody.appendChild(createRow());
+                    updateBadges();
+                }).catch(() => {
+                    // Proceed without template if fetch fails
+                    selectedTableBody.appendChild(createRow());
+                    updateBadges();
+                });
+            }
+        });
+    }
+
+    if (buttons.delete) {
+        buttons.delete.addEventListener('click', deleteSelectedRows);
+    }
+
+    if (buttons.createUpdate) {
+        buttons.createUpdate.addEventListener('click', handleCreateUpdate);
+    }
+
+    if (buttons.selectAllAvailable) {
+        buttons.selectAllAvailable.addEventListener('change', () => {
+            toggleSelectAll('availableTableBody', buttons.selectAllAvailable.checked);
+        });
+    }
+
+    if (buttons.selectAllSelected) {
+        buttons.selectAllSelected.addEventListener('change', () => {
+            toggleSelectAll('selectedTableBody', buttons.selectAllSelected.checked);
+            updateBadges();
+        });
+    }
+
+    const selectedTableBody = document.getElementById('selectedTableBody');
+    if (selectedTableBody) {
+        selectedTableBody.addEventListener('change', event => {
+            if (event.target.classList.contains('select-experiment')) {
+                updateBadges();
+            }
+        });
+    }
+}
+
+// Initialize modals
+function initializeModals() {
+    initializeDataPathModal();
+    initializePvLoggerPathModal();
+    initializeAcknowledgmentsModal();
+}
+
+// Function to ensure we have the current data path template
+function ensureDataPathTemplate() {
+    const stationSelect = document.getElementById('stationSelect');
+    const techniqueSelect = document.getElementById('techniqueSelect');
+    
+    if (!stationSelect || !techniqueSelect) {
+        return Promise.reject('Station or technique select not found');
+    }
+    
+    const stationId = stationSelect.value;
+    const techniqueId = techniqueSelect.value;
+    
+    if (!stationId || !techniqueId) {
+        return Promise.reject('Station or technique not selected');
+    }
+    
+    // Only fetch if we don't have a template or if the selection has changed
+    return fetchDataPathTemplate(stationId, techniqueId);
+}
+
+// Function to update data paths for existing rows in selected table
+function updateDataPathForExistingRows() {
+    const selectedTableBody = document.getElementById('selectedTableBody');
+    if (!selectedTableBody || !dataPathTemplate) return;
+    
+    const rows = selectedTableBody.querySelectorAll('tr');
+    rows.forEach(row => {
+        const dataPathInput = row.querySelector('.editable-data-path');
+        const experimentInput = row.querySelector('td:nth-child(7) input');
+        
+        if (dataPathInput && experimentInput) {
+            const experimentId = experimentInput.value;
+            const runMatch = experimentId.match(/\d+/);
+            const runId = runMatch ? runMatch[0] : '';
+            
+            // Only update if the current value looks like it was generated from a template
+            // (to avoid overwriting user-modified paths)
+            const currentValue = dataPathInput.value;
+            if (!currentValue || currentValue.includes('{') || currentValue.includes('/data/') || currentValue.includes('Run')) {
+                dataPathInput.value = formatDataPath(dataPathTemplate, { runId: runId });
+            }
+        }
+    });
+}
+
+// Auto-submit filter form on dropdown change and fetch data path template
+function initializeFilterFormAutoSubmit() {
+    const filterForm = document.getElementById('filterForm');
+    const stationSelect = document.getElementById('stationSelect');
+    const techniqueSelect = document.getElementById('techniqueSelect');
+    
+    if (filterForm) {
+        const selects = filterForm.querySelectorAll('select');
+        selects.forEach(select => {
+            select.addEventListener('change', () => {
+                filterForm.submit();
+            });
+        });
+    }
+    
+    // Listen for station/technique changes to update data path template
+    if (stationSelect && techniqueSelect) {
+        const handleTemplateUpdate = () => {
+            const stationId = stationSelect.value;
+            const techniqueId = techniqueSelect.value;
+            
+            if (stationId && techniqueId) {
+                fetchDataPathTemplate(stationId, techniqueId)
+                    .then(() => {
+                        updateDataPathForExistingRows();
+                    })
+                    .catch(error => {
+                        console.log('Could not fetch data path template:', error);
+                    });
+            }
+        };
+        
+        stationSelect.addEventListener('change', handleTemplateUpdate);
+        techniqueSelect.addEventListener('change', handleTemplateUpdate);
+        
+        // Initial load if both are already selected
+        if (stationSelect.value && techniqueSelect.value) {
+            handleTemplateUpdate();
+        }
+    }
+}
+
+function createRow() {
+    // Get the run number from the selected run dropdown
+    const runSelect = document.getElementById('runSelect');
+    let runNumber = '';
+    
+    if (runSelect && runSelect.value) {
+        // Get the selected option text (which contains the run name like "2025-1")
+        const selectedOption = runSelect.options[runSelect.selectedIndex];
+        if (selectedOption && selectedOption.text !== 'All') {
+            const runName = selectedOption.text;
+            // Extract run number from runName (e.g., "2025-1" -> "1")
+            runNumber = runName.includes('-') ? runName.split('-').pop() : runName;
+        }
+    }
+    
+    // Use the current data path template for new rows with run context
+    const formattedDataPath = formatDataPath(dataPathTemplate, { runId: runNumber });
+    
+    const row = document.createElement('tr');
+    row.innerHTML = `
+        <td><input type="checkbox" class="select-experiment" checked></td>
+        <td><input type="text" class="form-control" placeholder="Title"></td>
+        <td><input type="text" class="form-control editable-data-path" value="${formattedDataPath}" style="width: 100%;"></td>
+        <td><input type="text" class="form-control editable-pvlogger-path" value="" style="width: 100%;"></td>
+        <td>
+            <input type="text" class="form-control editable-acknowledgments" readonly placeholder="Click to add acknowledgments">
+            <div class="acknowledgments-tooltip"></div>
+            <input type="hidden" class="acknowledgments-data">
+        </td>
+        <td><input type="checkbox" class="doi-checkbox" checked></td>
+        <td><input type="text" class="form-control" placeholder="Experiment"></td>
+        <td><input type="text" class="form-control" placeholder="Proposal"></td>
+        <td>New</td>
+    `;
+    return row;
+}
+
+function showNotification(type, message) {
+    // You can implement this function to show notifications in a more user-friendly way
+    // For now, we'll use alert
+    alert(message);
+}
+
+// Format data path based on template and experiment data
+function formatDataPath(template, experimentData = {}) {
+    if (!template) return '';
+
+    const currentYear = new Date().getFullYear();
+    const runId = experimentData.runId || '';
+
+    return template
+        .replace(/{YEAR}/g, currentYear)
+        .replace(/{RUN}/g, runId);
+}
+
+// Function to fetch and store the data path template
+function fetchDataPathTemplate(stationId, techniqueId) {
+    if (!stationId || !techniqueId) return Promise.reject('Missing required parameters');
+
+    console.log(`Fetching data path for station: ${stationId}, technique: ${techniqueId}`);
+    return fetch(`/api/v1/get_data_path?station_id=${stationId}&technique_id=${techniqueId}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Server responded with ${response.status}`);
+            }
+            return response.text();
+        })
+        .then(template => {
+            console.log(`Received template: "${template}"`);
+            dataPathTemplate = template;
+            return template;
+        });
+}
+
+// Function to validate if a data path exists
+function validateDataPath(path) {
+    if (!path || !path.trim()) {
+        return Promise.resolve({ exists: false, valid: false, message: 'Please enter a path' });
+    }
+
+    return fetch('/api/v1/validate_data_path', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ rows }),
+        body: JSON.stringify({ path: path.trim() })
     })
-        .then(response => response.json())
-        .then(result => {
-            if (result.failure === 0) {
-                alert(`Successfully added ${result.success} rows to the queue.`);
-                // Remove successfully added rows from the table
-                selectedTableBody.querySelectorAll('tr').forEach(row => row.remove());
-                updateBadges(); // Update badges after rows are removed
-            } else {
-                alert(`Added ${result.success} rows to the queue, but ${result.failure} rows failed.`);
-            }
-        })
-        .catch(error => {
-            console.error('Error adding rows to the queue:', error);
-            alert('An error occurred while adding rows to the queue.');
-        });
-});
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Server responded with ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(result => {
+        if (result.error) {
+            return {
+                exists: null,
+                valid: false,
+                message: result.error
+            };
+        }
+        
+        return {
+            exists: result.exists,
+            valid: result.valid,
+            message: result.message,
+            normalized: result.normalized
+        };
+    })
+    .catch(error => {
+        console.error('Error validating path:', error);
+        return {
+            exists: null,
+            valid: false,
+            message: 'Unable to validate path'
+        };
+    });
+}
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', () => {
     fetchAcknowledgmentOptions();
-    addNewRow();
-    addMoveButtons();
-    addSelectAllFunctionality();
-    initializeDeleteAndMoveUpButtons();
-    initializeDataPathModal();
-    initializePvLoggerPathModal();
-    attachRowSelectionListeners();
+    initializeTableHandlers();
+    initializeModals();
     updateBadges();
+    initializeFilterFormAutoSubmit();
 });

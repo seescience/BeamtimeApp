@@ -14,15 +14,14 @@
 
 import datetime
 from dataclasses import dataclass, field
-from typing import Dict, Any
+from typing import Any, Dict
 
-from sqlalchemy import String, Text, DateTime, Integer, ForeignKey, Enum
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from beamtime_app.database import BASE
 
-
-__all__ = ["Info", "Run", "Beamline", "Technique", "Station", "Acknowledgment", "Person", "Experiment", "Queue"]
+__all__ = ["Acknowledgment", "Beamline", "DataPath", "Experiment", "Info", "Person", "ProcessStatus", "Queue", "Run", "Station", "Technique"]
 
 
 class BaseModel:
@@ -176,7 +175,7 @@ class Experiment(BASE, BaseModel):
     esaf_pdf_file: Mapped[str] = mapped_column(Text)
     proposal_pdf_file: Mapped[str] = mapped_column(Text)
     folder_status_id: Mapped[int] = mapped_column(Integer)
-    process_status: Mapped[Enum] = mapped_column(Enum("new", "processed", "modified", name="experiement_status", create_type=True))
+    process_status_id: Mapped[int] = mapped_column(Integer)
 
     def __post_init__(self) -> None:
         self._columns = {
@@ -200,6 +199,19 @@ class Experiment(BASE, BaseModel):
             "folder_status_id": self.folder_status_id,
             "process_status": self.process_status,
         }
+
+
+@dataclass
+class ProcessStatus(BASE, BaseModel):
+    """Model for the process status."""
+
+    __tablename__ = "process_status"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(64))
+
+    def __post_init__(self) -> None:
+        self._columns = {"id": self.id, "name": self.name}
 
 
 @dataclass
@@ -227,4 +239,23 @@ class Queue(BASE, BaseModel):
             "doi": self.doi,
             "proposal_number": self.proposal_number,
             "acknowledgments": self.acknowledgments,
+        }
+
+@dataclass
+class DataPath(BASE, BaseModel):
+    """Model for the data paths."""
+
+    __tablename__ = "data_path"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    path_template: Mapped[str] = mapped_column(Text)
+    station_id: Mapped[int] = mapped_column(Integer, ForeignKey("station.id"))
+    technique_id: Mapped[int] = mapped_column(Integer, ForeignKey("technique.id"))
+
+    def __post_init__(self) -> None:
+        self._columns = {
+            "id": self.id,
+            "path_template": self.path_template,
+            "station_id": self.station_id,
+            "technique_id": self.technique_id,
         }

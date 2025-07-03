@@ -1,23 +1,13 @@
 #!/usr/bin/env python3
 # ----------------------------------------------------------------------------------
 # Project: BeamtimeApp
-# File: beamtime_app/routes.py
+# File: beamtime_app/api/v1/__init__.py
 # ----------------------------------------------------------------------------------
 # Purpose:
-# This file is used to define the routes for the BeamtimeApp.
+# This is the main entry point for the v1 API.
 # ----------------------------------------------------------------------------------
 # Author: Christofanis Skordas
 #
 # Copyright (C) 2025 GSECARS, The University of Chicago, USA
 # Copyright (C) 2025 NSF SEES, USA
 # ----------------------------------------------------------------------------------
-
-from flask import Blueprint, redirect, request, url_for
-
-beamtime = Blueprint("beamtime", __name__)
-
-
-@beamtime.route("/")
-def home():
-    # Forward all query parameters to /api/v1/
-    return redirect(url_for("api_v1.home", **request.args))

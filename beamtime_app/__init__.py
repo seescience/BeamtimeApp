@@ -21,7 +21,6 @@ from flask import Flask
 
 from beamtime_app.config import Config, DatabaseConfig
 
-
 __all__ = ["create_flask_app", "database_config"]
 
 
@@ -49,8 +48,10 @@ def create_flask_app(config_class=Config):
     app.logger = flask_logger
 
     # Import and register the routes
+    from beamtime_app.api.v1.routes import api_v1
     from beamtime_app.routes import beamtime
 
     app.register_blueprint(beamtime)
+    app.register_blueprint(api_v1)
 
     return app
