@@ -1,10 +1,11 @@
 #!/bin/bash
 # ----------------------------------------------------------------------------------
 # Project: BeamtimeApp
-# File: start_beamtime_app.sh
+# File: start_beamtime_app_devel.sh
 # ----------------------------------------------------------------------------------
 # Purpose: 
-# This script is used to start the BeamtimeApp web application.
+# This script is used to start the BeamtimeApp web application for local testing
+# and development.
 # ----------------------------------------------------------------------------------
 # Author: Christofanis Skordas
 #
@@ -12,4 +13,4 @@
 # Copyright (C) 2025 NSF SEES, USA
 # ----------------------------------------------------------------------------------
 
-nohup uv run BeamtimeApp.py & > /dev/null 2>&1
+uv run BeamtimeApp.py -d -p 5001
