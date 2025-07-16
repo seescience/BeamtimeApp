@@ -13,6 +13,7 @@
 
 let acknowledgmentOptions = [];
 let dataPathTemplate = '';
+let currentSortState = [];
 
 // Fetch acknowledgment options from the server
 function fetchAcknowledgmentOptions() {
@@ -709,6 +710,84 @@ function validateDataPath(path) {
     });
 }
 
+
+function initializeSortHandlers() {
+    const sortIcons = document.querySelectorAll('.sort-icons');
+
+    sortIcons.forEach(iconGroup => {
+        const column = iconGroup.dataset.column;
+        const up = iconGroup.querySelector('.sort-up');
+        const down = iconGroup.querySelector('.sort-down');
+
+        up.addEventListener('click', () => {
+            updateSortState(column, 'asc');
+            updateSortUI();
+            sortTableByState('availableTableBody');
+        });
+
+        down.addEventListener('click', () => {
+            updateSortState(column, 'desc');
+            updateSortUI();
+            sortTableByState('availableTableBody');
+        });
+    });
+}
+
+function updateSortState(column, direction) {
+    currentSortState = currentSortState.filter(item => item.column !== column);
+    currentSortState.unshift({ column, direction });
+}
+
+function updateSortUI() {
+    document.querySelectorAll('.sort-icons').forEach(iconGroup => {
+        const column = iconGroup.dataset.column;
+        const up = iconGroup.querySelector('.sort-up');
+        const down = iconGroup.querySelector('.sort-down');
+        up.classList.remove('active');
+        down.classList.remove('active');
+
+        const sort = currentSortState.find(s => s.column === column);
+        if (sort) {
+            if (sort.direction === 'asc') up.classList.add('active');
+            else if (sort.direction === 'desc') down.classList.add('active');
+        }
+    });
+}
+
+function sortTableByState(tableId) {
+    const tableBody = document.getElementById(tableId);
+    const rows = Array.from(tableBody.querySelectorAll('tr'));
+
+    rows.sort((a, b) => {
+        for (const { column, direction } of currentSortState) {
+            const aVal = getCellValue(a, column);
+            const bVal = getCellValue(b, column);
+
+            if (aVal < bVal) return direction === 'asc' ? -1 : 1;
+            if (aVal > bVal) return direction === 'asc' ? 1 : -1;
+        }
+        return 0;
+    });
+
+    tableBody.innerHTML = '';
+    rows.forEach(row => tableBody.appendChild(row));
+}
+
+function getCellValue(row, column) {
+    switch (column) {
+        case 'title':
+            return row.querySelector('td:nth-child(2) input')?.textContent.trim().toLowerCase() || '';
+        case 'experiment':
+            return row.querySelector('td:nth-child(3) input')?.value.trim() || '';
+        case 'proposal':
+            return row.querySelector('td:nth-child(4) input')?.value.trim() || '';
+        case 'status':
+            return row.querySelector('td:nth-child(5)')?.textContent.trim().toLowerCase() || '';
+        default: 
+            return '';
+    }
+}
+
 // Initialize the application
 document.addEventListener('DOMContentLoaded', () => {
     fetchAcknowledgmentOptions();
@@ -716,4 +795,5 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeModals();
     updateBadges();
     initializeFilterFormAutoSubmit();
+    initializeSortHandlers();
 });

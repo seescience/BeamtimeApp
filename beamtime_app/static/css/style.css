@@ -428,6 +428,25 @@ input[type="checkbox"]:checked::after {
     font-size: 0.8rem;
 }
 
+/* Sort Icons */
+.sort-icons {
+    display: inline-flex;
+    flex-direction: column;
+    font-size: 10px;
+    margin-left: 5px;
+    cursor: pointer;
+}
+
+.sort-icons .sort-up,
+.sort-icons .sort-down {
+    color: gray;
+}
+
+.sort-icons .active {
+    color: black;
+    font-weight: bold;
+}
+
 /* Filter Form */
 #filterForm {
     margin-bottom: var(--spacing-xl);
