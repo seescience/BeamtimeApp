@@ -76,16 +76,16 @@ def create_update_queue() -> str:
     # Get the rows from the request data
     rows = request.get_json().get("rows", [])
 
-    # Filter out rows with only the DOI checkbox selected
+    # Filter out rows with only the DOI checkbox selected and map to correct column names
     valid_rows = [
         {
-            "experiment_number": row.get("experiment_number") or None,
-            "title": row.get("title") or None,
+            "experiment_id": row.get("experiment_number") or None,
             "data_path": row.get("data_path") or None,
             "pvlog_path": row.get("pvlog_path") or None,
-            "doi": row.get("doi") or None,
-            "proposal_number": row.get("proposal_number") or None,
+            "create_doi": row.get("doi") or None,
+            "proposal_id": row.get("proposal_number") or None,
             "acknowledgments": row.get("acknowledgments") or [],
+            # process_status_id will use the default value of 2 from the model
         }
         for row in rows
         # Ensure that at least one of the fields is not None or empty, except DOI

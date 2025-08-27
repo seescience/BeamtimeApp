@@ -187,10 +187,10 @@ class Experiment(BASE, BaseModel):
     start_date: Mapped[datetime.datetime] = mapped_column(DateTime)
     end_date: Mapped[datetime.datetime] = mapped_column(DateTime)
     folder: Mapped[str] = mapped_column(Text)
-    data_doi: Mapped[str] = mapped_column(Text)
+    sees_doi: Mapped[str] = mapped_column(Text)
     esaf_pdf_file: Mapped[str] = mapped_column(Text)
     proposal_pdf_file: Mapped[str] = mapped_column(Text)
-    folder_status_id: Mapped[int] = mapped_column(Integer)
+    pvlog_file: Mapped[str] = mapped_column(Text)
     process_status_id: Mapped[int] = mapped_column(Integer)
 
     def __post_init__(self) -> None:
@@ -209,11 +209,11 @@ class Experiment(BASE, BaseModel):
             "start_date": self.start_date,
             "end_date": self.end_date,
             "folder": self.folder,
-            "data_doi": self.data_doi,
+            "sees_doi": self.sees_doi,
             "esaf_pdf_file": self.esaf_pdf_file,
             "proposal_pdf_file": self.proposal_pdf_file,
-            "folder_status_id": self.folder_status_id,
-            "process_status": self.process_status,
+            "pvlog_file": self.pvlog_file,
+            "process_status_id": self.process_status_id,
         }
 
 
@@ -237,24 +237,24 @@ class Queue(BASE, BaseModel):
     __tablename__ = "queue"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    experiment_number: Mapped[int] = mapped_column(Integer)
-    title: Mapped[str] = mapped_column(Text)
+    experiment_id: Mapped[int] = mapped_column(Integer)
     data_path: Mapped[str] = mapped_column(Text)
     pvlog_path: Mapped[str] = mapped_column(Text)
-    doi: Mapped[bool] = mapped_column()
-    proposal_number: Mapped[int] = mapped_column(Integer)
+    create_doi: Mapped[bool] = mapped_column()
+    proposal_id: Mapped[int] = mapped_column(Integer)
     acknowledgments: Mapped[str] = mapped_column(Text)
+    process_status_id: Mapped[int] = mapped_column(Integer, ForeignKey("process_status.id"), nullable=False, default=2)
 
     def __post_init__(self) -> None:
         self._columns = {
             "id": self.id,
-            "experiment_number": self.experiment_number,
-            "title": self.title,
+            "experiment_id": self.experiment_id,
             "data_path": self.data_path,
             "pvlog_path": self.pvlog_path,
-            "doi": self.doi,
-            "proposal_number": self.proposal_number,
+            "create_doi": self.create_doi,
+            "proposal_id": self.proposal_id,
             "acknowledgments": self.acknowledgments,
+            "process_status_id": self.process_status_id,
         }
 
 
