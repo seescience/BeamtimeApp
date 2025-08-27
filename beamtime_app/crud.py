@@ -58,7 +58,7 @@ def get_experiments(
                 Experiment.run_id,
                 Experiment.beamline_id,
                 Experiment.proposal_id,
-                Experiment.user_folder,
+                Experiment.folder,
                 ProcessStatus.name.label("process_status_name"),
             ).outerjoin(ProcessStatus, Experiment.process_status_id == ProcessStatus.id)
 
@@ -72,7 +72,7 @@ def get_experiments(
                     "run_id": result.run_id,
                     "beamline_id": result.beamline_id,
                     "proposal_id": result.proposal_id,
-                    "user_folder": result.user_folder,
+                    "folder": result.folder,
                     "process_status": result.process_status_name or "Unknown",
                 }
                 for result in results

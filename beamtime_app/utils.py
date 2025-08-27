@@ -32,7 +32,7 @@ def format_experiment_data(experiments: list[dict[str, any]]) -> list[dict[str, 
             "beamline_id": exp.get("beamline_id", None),
             "proposal": exp.get("proposal_id", "N/A"),
             "process_status": exp.get("process_status", "N/A"),
-            "user_folder": exp.get("user_folder", "N/A"),
+            "folder": exp.get("folder", "N/A"),
         }
         for exp in experiments
     ]

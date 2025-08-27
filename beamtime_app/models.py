@@ -21,7 +21,19 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from beamtime_app.database import BASE
 
-__all__ = ["Acknowledgment", "Beamline", "DataPath", "Experiment", "Info", "Person", "ProcessStatus", "Queue", "Run", "Station", "Technique"]
+__all__ = [
+    "Acknowledgment",
+    "Beamline",
+    "DataPath",
+    "Experiment",
+    "Info",
+    "Person",
+    "ProcessStatus",
+    "Queue",
+    "Run",
+    "Station",
+    "Technique",
+]
 
 
 class BaseModel:
@@ -42,8 +54,12 @@ class Info(BASE, BaseModel):
     key: Mapped[str] = mapped_column(Text, primary_key=True, unique=True)
     value: Mapped[str] = mapped_column(Text)
     notes: Mapped[str] = mapped_column(Text)
-    modify_time: Mapped[datetime.datetime] = mapped_column(DateTime, default=datetime.datetime.now)
-    create_time: Mapped[datetime.datetime] = mapped_column(DateTime, default=datetime.datetime.now)
+    modify_time: Mapped[datetime.datetime] = mapped_column(
+        DateTime, default=datetime.datetime.now
+    )
+    create_time: Mapped[datetime.datetime] = mapped_column(
+        DateTime, default=datetime.datetime.now
+    )
     display_order: Mapped[int] = mapped_column(Integer)
 
     def __post_init__(self) -> None:
@@ -170,7 +186,7 @@ class Experiment(BASE, BaseModel):
     description: Mapped[str] = mapped_column(Text)
     start_date: Mapped[datetime.datetime] = mapped_column(DateTime)
     end_date: Mapped[datetime.datetime] = mapped_column(DateTime)
-    user_folder: Mapped[str] = mapped_column(Text)
+    folder: Mapped[str] = mapped_column(Text)
     data_doi: Mapped[str] = mapped_column(Text)
     esaf_pdf_file: Mapped[str] = mapped_column(Text)
     proposal_pdf_file: Mapped[str] = mapped_column(Text)
@@ -192,7 +208,7 @@ class Experiment(BASE, BaseModel):
             "description": self.description,
             "start_date": self.start_date,
             "end_date": self.end_date,
-            "user_folder": self.user_folder,
+            "folder": self.folder,
             "data_doi": self.data_doi,
             "esaf_pdf_file": self.esaf_pdf_file,
             "proposal_pdf_file": self.proposal_pdf_file,
@@ -240,6 +256,7 @@ class Queue(BASE, BaseModel):
             "proposal_number": self.proposal_number,
             "acknowledgments": self.acknowledgments,
         }
+
 
 @dataclass
 class DataPath(BASE, BaseModel):
