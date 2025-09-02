@@ -1,10 +1,14 @@
 {% extends "layout.html" %}
 {% block content %}
-<div class="beamtime-container">
-    
-    <!-- Title and Dropdowns Section -->
-    <div class="beamtime-header">
-        <h4>Beamtime</h4>
+<!-- Full-width header -->
+<div class="beamtime-header">
+    <div class="header-content">
+        <div class="header-logo">
+            <img src="https://seescience.org/wp-content/uploads/2024/07/NSF-SEES-Logo.png" 
+                 alt="NSF SEES Logo" 
+                 class="header-sees-logo">
+        </div>
+        <h4>SEES Beamtime Management</h4>
         <div class="header-right">
             <span class="last-modified">Last Update: {{ last_modified or "N/A" }}</span>
             <div class="theme-switcher">
@@ -14,229 +18,286 @@
             </div>
         </div>
     </div>
-    <form id="filterForm" method="get" action="/">
-        <div class="row">
+</div>
 
-            <!-- Run dropdown -->
-            <div class="col-md-3">
-                <label for="runSelect"><strong>Run</strong></label>
-                <select id="runSelect" name="run" class="form-control">
-                    <option value="">All</option>
-                    {% for run in runs %}
-                    <option value="{{ run.id }}" {% if run.id == selected_run %}selected{% endif %}>{{ run.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <!-- Beamline dropdown -->
-            <div class="col-md-3">
-                <label for="beamlineSelect"><strong>Beamline</strong></label>
-                <select id="beamlineSelect" name="beamline" class="form-control">
-                    <option value="">All</option>
-                    {% for beamline in beamlines %}
-                    <option value="{{ beamline.id }}" {% if beamline.id == selected_beamline %}selected{% endif %}>{{ beamline.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <!-- Station dropdown -->
-            <div class="col-md-3">
-                <label><strong>Station</strong></label>
-                <select class="form-control" id="stationSelect" name="station">
-                    <option value="">All</option>
-                    {% for station in stations %}
-                    <option value="{{ station.id }}" {% if station.id == selected_station %}selected{% endif %}>{{ station.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <!-- Technique dropdown -->
-            <div class="col-md-3">
-                <label><strong>Technique</strong></label>
-                <select class="form-control" id="techniqueSelect" name="technique">
-                    <option value="">All</option>
-                    {% for technique in techniques %}
-                    <option value="{{ technique.id }}" {% if technique.id == selected_technique %}selected{% endif %}>{{ technique.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-        </div>
-    </form>
-
-    <!-- Available Experiments Table Section -->
+<div class="beamtime-container">
+    <!-- Experiments Table Section -->
     <div class="table-header-container">
-        <h5 class="available-title">Available Experiments</h5>
-    </div>
-    <div class="available-table">
-        <form id="selectAllForm">
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead class="thead-dark">
-                        <tr>
-                            <th scope="col">
-                                <input type="checkbox" id="selectAllAvailable">
-                            </th>
-                            <th scope="col">Title
-                                <span class="sort-icons" data-column="title">
-                                    <i class="sort-up">&#9650;</i>
-                                    <i class="sort-down">&#9660;</i>
-                                </span>
-                            </th>
-                            <th scope="col">Experiment
-                                <span class="sort-icons" data-column="experiment">
-                                    <i class="sort-up">&#9650;</i>
-                                    <i class="sort-down">&#9660;</i>
-                                </span>
-                            </th>
-                            <th scope="col">Proposal
-                                <span class="sort-icons" data-column="proposal">
-                                    <i class="sort-up">&#9650;</i>
-                                    <i class="sort-down">&#9660;</i>
-                                </span>
-                            </th>
-                            <th scope="col">Status
-                                <span class="sort-icons" data-column="status">
-                                    <i class="sort-up">&#9650;</i>
-                                    <i class="sort-down">&#9660;</i>
-                                </span>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody id="availableTableBody">
-                        {% for experiment in experiments %}
-                        <tr class="experiment-row" 
-                            data-run="{{ experiment.run_id }}" 
-                            data-beamline="{{ experiment.beamline_id }}" 
-                            data-user-folder="{{ experiment.folder or '' }}">
-                            <td>
-                                <input type="checkbox" class="select-experiment" 
-                                       name="selected_experiments" 
-                                       value="{{ experiment.id }}" 
-                                       {% if experiment.selected %}checked{% endif %}>
-                            </td>
-                            <td>{{ experiment.title }}</td>
-                            <td>{{ experiment.id }}</td>
-                            <td>{{ experiment.proposal or 'N/A' }}</td>
-                            <td>{{ experiment.process_status or 'N/A' }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+        <h5 class="experiments-title">Experiments</h5>
+        
+        <!-- Inline Filters -->
+        <form id="filterForm" method="get" action="/" class="inline-filters">
+            <input type="search" id="searchInput" name="search" class="inline-filter-search" 
+                   placeholder="Search experiments..." 
+                   value="{{ request.args.get('search', '') }}">
+            
+            <select id="runSelect" name="run" class="inline-filter-select">
+                <option value="">All Runs</option>
+                {% for run in runs %}
+                <option value="{{ run.id }}" {% if run.id == selected_run %}selected{% endif %}>{{ run.name }}</option>
+                {% endfor %}
+            </select>
+            
+            <select id="beamlineSelect" name="beamline" class="inline-filter-select">
+                <option value="">All Beamlines</option>
+                {% for beamline in beamlines %}
+                <option value="{{ beamline.id }}" {% if beamline.id == selected_beamline %}selected{% endif %}>{{ beamline.name }}</option>
+                {% endfor %}
+            </select>
+            
+            <select id="stationSelect" name="station" class="inline-filter-select">
+                <option value="">All Stations</option>
+                {% for station in stations %}
+                <option value="{{ station.id }}" {% if station.id == selected_station %}selected{% endif %}>{{ station.name }}</option>
+                {% endfor %}
+            </select>
+            
+            <select id="techniqueSelect" name="technique" class="inline-filter-select">
+                <option value="">All Techniques</option>
+                {% for technique in techniques %}
+                <option value="{{ technique.id }}" {% if technique.id == selected_technique %}selected{% endif %}>{{ technique.name }}</option>
+                {% endfor %}
+            </select>
+            
+            <select id="statusSelect" name="status" class="inline-filter-select">
+                <option value="">All Statuses</option>
+                {% for status in process_statuses %}
+                <option value="{{ status.id }}" {% if status.id == selected_status %}selected{% endif %}>{{ status.name }}</option>
+                {% endfor %}
+            </select>
+            
+            <button type="button" class="inline-filter-clear" id="clearFiltersBtn" title="Clear all filters">
+                Clear Filters
+            </button>
         </form>
     </div>
-
-    <!-- Selected/New Experiments Table Section -->
-    <div class="table-header-container mt-4">
-        <h5 class="selected-title">Selected/New Experiments</h5>
-        <div class="button-group">
-            <button id="moveDown" class="btn btn-secondary">
-                <i class="bi bi-arrow-down"></i>
-            </button>
-            <button id="moveUp" class="btn btn-secondary">
-                <i class="bi bi-arrow-up"></i>
-            </button>
-            <button id="addNewRow" class="btn btn-secondary">Add New</button>
-            <button id="deleteRow" class="btn btn-secondary">
-                Delete
-                <span id="deleteCount" class="badge bg-dark text-light d-none">0</span>
-            </button>
-            <button id="createUpdate" class="btn btn-secondary">
-                Create/Update
-                <span id="createUpdateCount" class="badge bg-dark text-light d-none">0</span>
-            </button>
-        </div>
-    </div>
     
-    <div class="selected-table">
+    <div class="experiments-table">
         <div class="table-responsive">
             <table class="table table-hover">
                 <thead class="thead-dark">
                     <tr>
-                        <th scope="col"><input type="checkbox" id="selectAllSelected"></th>
-                        <th scope="col">Title</th>
-                        <th scope="col">Data Path</th>
-                        <th scope="col">PVLogger Path</th>
-                        <th scope="col">Acknowledgments</th>
-                        <th scope="col">DOI</th>
-                        <th scope="col">Experiment</th>
-                        <th scope="col">Proposal</th>
-                        <th scope="col">Status</th>
+                        <th scope="col" class="sortable-header" data-column="proposal">Proposal</th>
+                        <th scope="col" class="sortable-header" data-column="experiment">ESAF</th>
+                        <th scope="col" class="sortable-header" data-column="title">Title</th>
+                        <th scope="col">Actions</th>
                     </tr>
                 </thead>
-                <tbody id="selectedTableBody">
-                    <!-- Rows will be dynamically added -->
+                <tbody id="experimentsTableBody">
+                {% for experiment in experiments %}
+                <tr class="experiment-row" 
+                    data-experiment-id="{{ experiment.id }}"
+                    data-run="{{ experiment.run_id }}" 
+                    data-beamline="{{ experiment.beamline_id }}" 
+                    data-user-folder="{{ experiment.folder or '' }}"
+                    data-experiment-data='{{ experiment | tojson | safe }}'>
+                        <td class="experiment-proposal">{{ experiment.proposal or 'N/A' }}</td>
+                        <td class="experiment-id">{{ experiment.id }}</td>
+                        <td class="experiment-title">
+                            <div class="experiment-title-container">
+                                <span class="experiment-title-text">{{ experiment.title }}</span>
+                                <span class="status-badge status-{{ (experiment.process_status or 'unknown').lower().replace(' ', '-') }}">
+                                    {{ experiment.process_status or 'Unknown' }}
+                                </span>
+                            </div>
+                        </td>
+                        <td class="experiment-actions">
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button class="btn btn-outline-primary btn-view" data-experiment-id="{{ experiment.id }}" title="View Details">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button class="btn btn-outline-secondary btn-edit" data-experiment-id="{{ experiment.id }}" title="Edit Experiment">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
 
-    <!-- Modal for editing Data Path -->
-    <div class="modal fade" id="dataPathModal" tabindex="-1" aria-labelledby="dataPathModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
+    <!-- Experiment Edit/Queue Modal -->
+    <div class="modal fade" id="experimentModal" tabindex="-1" aria-labelledby="experimentModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="dataPathModalLabel">Edit Data Path</h5>
+                    <h5 class="modal-title" id="experimentModalLabel">Experiment Details</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <label for="dataPathInput" class="form-label">Data Path:</label>
-                    <input type="text" id="dataPathInput" class="form-control" />
-                    <div class="mt-2">
-                        <span id="pathValidationMessage" class="small"></span>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="saveDataPathButton">Save</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal for editing PVLogger Path -->
-    <div class="modal fade" id="pvLoggerPathModal" tabindex="-1" aria-labelledby="pvLoggerPathModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="pvLoggerPathModalLabel">Edit PVLogger Path</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <label for="pvLoggerPathInput" class="form-label">PVLogger Path:</label>
-                    <input type="text" id="pvLoggerPathInput" class="form-control" />
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="savePvLoggerPathButton">Save</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal for editing Acknowledgments -->
-    <div class="modal fade" id="acknowledgementsModal" tabindex="-1" aria-labelledby="acknowledgementsModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="acknowledgementsModalLabel">Select Acknowledgments</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="acknowledgments-list">
-                        {% for ack in acknowledgments %}
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" value="{{ ack.id }}" id="ack{{ ack.id }}">
-                            <label class="form-check-label" for="ack{{ ack.id }}">
-                                {{ ack.title }}
-                            </label>
+                    <form id="experimentForm">
+                        <input type="hidden" id="experimentId" name="experimentId">
+                        
+                        <!-- Basic Information Row -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="experimentTitle" class="form-label">Title</label>
+                                <input type="text" class="form-control" id="experimentTitle" name="title" readonly>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="experimentNumber" class="form-label">ESAF Number</label>
+                                <input type="text" class="form-control" id="experimentNumber" name="experimentNumber" readonly>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="proposalNumber" class="form-label">Proposal Number</label>
+                                <input type="text" class="form-control" id="proposalNumber" name="proposalNumber" readonly>
+                            </div>
                         </div>
-                        {% endfor %}
+                        
+                        <!-- Paths Row (Editable for Queue Processing) -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="dataPath" class="form-label">Data Path</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="dataPath" name="dataPath">
+                                    <button class="btn btn-outline-secondary" type="button" id="validatePathBtn" title="Validate Path">
+                                        <i class="bi bi-check2-circle"></i>
+                                    </button>
+                                </div>
+                                <div class="mt-2">
+                                    <span id="pathValidationMessage" class="small"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="pvLoggerPath" class="form-label">PVLogger Path</label>
+                                <input type="text" class="form-control" id="pvLoggerPath" name="pvLoggerPath">
+                            </div>
+                        </div>
+                        
+                        <!-- Acknowledgments Row -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <label class="form-label">Acknowledgments</label>
+                                <div class="acknowledgments-container">
+                                    <div class="acknowledgments-selected mb-2">
+                                        <span id="selectedAcknowledgmentsText" class="text-muted">No acknowledgments selected</span>
+                                    </div>
+                                    <div class="acknowledgments-list border rounded p-3" style="max-height: 200px; overflow-y: auto;">
+                                        {% for ack in acknowledgments %}
+                                        <div class="form-check">
+                                            <input class="form-check-input acknowledgment-checkbox" type="checkbox" value="{{ ack.id }}" id="modalAck{{ ack.id }}">
+                                            <label class="form-check-label" for="modalAck{{ ack.id }}">
+                                                {{ ack.title }}
+                                            </label>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Options Row -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="createDoi" name="createDoi" checked>
+                                    <label class="form-check-label" for="createDoi">
+                                        Create DOI for this experiment
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <input type="hidden" id="selectedAcknowledgments" name="acknowledgments">
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="addToQueueBtn">
+                        <i class="bi bi-plus-circle"></i> Add to Queue
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Experiment View Modal (read-only) -->
+    <div class="modal fade" id="experimentViewModal" tabindex="-1" aria-labelledby="experimentViewModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="experimentViewModalLabel">Experiment Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="container-fluid">
+                        <!-- Basic Information Row -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="form-label fw-bold">Title</div>
+                                <div id="detailViewTitle"></div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-label fw-bold">ESAF</div>
+                                <div id="detailViewExperimentNumber"></div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-label fw-bold">Proposal</div>
+                                <div id="detailViewProposal"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Status and Beamline Row -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="form-label fw-bold">Status</div>
+                                <div id="detailViewStatus"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-label fw-bold">Beamline</div>
+                                <div id="detailViewBeamline"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Dates Row -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="form-label fw-bold">Start Date</div>
+                                <div id="detailViewStartDate"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-label fw-bold">End Date</div>
+                                <div id="detailViewEndDate"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Personnel Row -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="form-label fw-bold">Spokesperson</div>
+                                <div id="detailViewSpokesperson"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-label fw-bold">Beamline Contact</div>
+                                <div id="detailViewBeamlineContact"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Description Row -->
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <div class="form-label fw-bold">Description</div>
+                                <div id="detailViewDescription" class="text-break"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- DOI and PDF Row -->
+                        <div class="row mb-2">
+                            <div class="col-md-6">
+                                <div class="form-label fw-bold">DOI</div>
+                                <div id="detailViewDoi"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-label fw-bold">ESAF PDF</div>
+                                <div id="detailViewEsafPdf"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="saveAcknowledgmentsButton">Save</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>

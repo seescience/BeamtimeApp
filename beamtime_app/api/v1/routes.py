@@ -20,7 +20,15 @@ from beamtime_app.crud import (
     get_data_path,
     get_experiments,
 )
-from beamtime_app.models import Acknowledgment, Beamline, Info, Run, Station, Technique
+from beamtime_app.models import (
+    Acknowledgment,
+    Beamline,
+    Info,
+    ProcessStatus,
+    Run,
+    Station,
+    Technique,
+)
 from beamtime_app.utils import format_info_modification_time
 
 # Create a Blueprint for the beamtime routes
@@ -33,13 +41,17 @@ def home():
     selected_beamline = request.args.get("beamline", type=int)
     selected_station = request.args.get("station", type=int)
     selected_technique = request.args.get("technique", type=int)
-    experiments = get_experiments(run=selected_run, beamline=selected_beamline)
+    selected_status = request.args.get("status", type=int)
+    experiments = get_experiments(
+        run=selected_run, beamline=selected_beamline, status=selected_status
+    )
     return render_template(
         "index.html",
         beamlines=get_all_entries(Beamline),
         stations=get_all_entries(Station),
         techniques=get_all_entries(Technique),
         runs=get_all_entries(Run),
+        process_statuses=get_all_entries(ProcessStatus),
         experiments=experiments,
         acknowledgments=get_all_entries(Acknowledgment),
         last_modified=format_info_modification_time(get_all_entries(Info)),
@@ -47,6 +59,7 @@ def home():
         selected_beamline=selected_beamline,
         selected_station=selected_station,
         selected_technique=selected_technique,
+        selected_status=selected_status,
     )
 
 

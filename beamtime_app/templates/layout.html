@@ -24,12 +24,15 @@
         <!-- Static CSS -->
         <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
 
-        <title>Beamtime</title>
+        <title>SEES Beamtime Management</title>
     </head>
     <body>
-        <!-- Main content -->
-        <div class="container-fluid content">
-            {% block content %}{% endblock %}
+        <div class="page-wrapper">
+            <!-- Main content -->
+            <div class="container-fluid content">
+                {% block content %}{% endblock %}
+            </div>
+
         </div>
 
         <!-- Javascript -->

@@ -14,6 +14,443 @@
 let acknowledgmentOptions = [];
 let dataPathTemplate = '';
 let currentSortState = [];
+let experimentModal = null;
+let experimentViewModal = null;
+let currentEditingExperiment = null;
+
+// Initialize the experiment modals
+function initializeExperimentModal() {
+    // Edit/queue modal
+    experimentModal = new bootstrap.Modal(document.getElementById('experimentModal'));
+
+    // View-only modal
+    const viewEl = document.getElementById('experimentViewModal');
+    if (viewEl) {
+        experimentViewModal = new bootstrap.Modal(viewEl);
+    }
+    
+    // Initialize acknowledgment checkboxes change handler
+    document.querySelectorAll('.acknowledgment-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', updateSelectedAcknowledgments);
+    });
+    
+    // Initialize add to queue button
+    const addBtn = document.getElementById('addToQueueBtn');
+    if (addBtn) addBtn.addEventListener('click', addSingleExperimentToQueue);
+    
+    // Initialize path validation button
+    const validateBtn = document.getElementById('validatePathBtn');
+    if (validateBtn) validateBtn.addEventListener('click', validateCurrentPath);
+    
+    // Real-time path validation
+    const dataPathEl = document.getElementById('dataPath');
+    if (dataPathEl) dataPathEl.addEventListener('input', debounceValidation);
+}
+
+// Open experiment modal for viewing or editing
+function openExperimentModal(experimentId, mode = 'edit') {
+    const modal = document.getElementById('experimentModal');
+    const modalTitle = document.getElementById('experimentModalLabel');
+    const form = document.getElementById('experimentForm');
+    const addToQueueBtn = document.getElementById('addToQueueBtn');
+    
+    // Reset form
+    form.reset();
+    clearValidationMessage();
+    
+    // Prepare edit/queue modal
+    currentEditingExperiment = experimentId;
+    modalTitle.textContent = 'Experiment Details';
+    addToQueueBtn.innerHTML = '<i class="bi bi-plus-circle"></i> Add to Queue';
+    addToQueueBtn.title = 'Add experiment to processing queue';
+    
+    // Load experiment data
+    loadExperimentData(experimentId, mode);
+    
+    // Set defaults for queue processing
+    document.getElementById('createDoi').checked = true;
+    
+    // Generate data path template for the current experiment
+    ensureDataPathTemplate().then(() => {
+        const currentDataPath = document.getElementById('dataPath').value;
+        if (!currentDataPath || currentDataPath === 'Not set') {
+            const runSelect = document.getElementById('runSelect');
+            let runNumber = '';
+            
+            if (runSelect && runSelect.value) {
+                const selectedOption = runSelect.options[runSelect.selectedIndex];
+                if (selectedOption && selectedOption.text !== 'All') {
+                    const runName = selectedOption.text;
+                    runNumber = runName.includes('-') ? runName.split('-').pop() : runName;
+                }
+            }
+            
+            document.getElementById('dataPath').value = formatDataPath(dataPathTemplate, { runId: runNumber });
+        }
+    }).catch(() => {
+        // Continue without template
+    });
+    
+    experimentModal.show();
+}
+
+// Load experiment data into modal
+function loadExperimentData(experimentId, mode = 'view') {
+    const row = document.querySelector(`tr[data-experiment-id="${experimentId}"]`);
+    if (!row) return;
+    
+    // Get data from the table row (new column order: Proposal, Experiment, Title)
+    const proposal = row.querySelector('.experiment-proposal').textContent.trim();
+    const experimentNumber = row.querySelector('.experiment-id').textContent.trim();
+    // Get clean title without status badge
+    const title = row.querySelector('.experiment-title-text').textContent.trim();
+    const userFolder = row.getAttribute('data-user-folder') || '';
+    
+    // Populate form fields
+    document.getElementById('experimentId').value = experimentId;
+    document.getElementById('experimentTitle').value = title;
+    document.getElementById('experimentNumber').value = experimentNumber;
+    document.getElementById('proposalNumber').value = proposal !== 'N/A' ? proposal : '';
+    
+    // Set readonly/editable based on mode - title and proposal are always readonly
+    const titleInput = document.getElementById('experimentTitle');
+    const proposalInput = document.getElementById('proposalNumber');
+    
+    // Always keep title and proposal readonly
+    titleInput.setAttribute('readonly', true);
+    proposalInput.setAttribute('readonly', true);
+    
+    if (mode === 'edit') {
+        // Load existing data path from the experiment if available
+        if (userFolder && userFolder.trim() !== '') {
+            // If there's already a data path, use it as-is
+            document.getElementById('dataPath').value = userFolder;
+        } else {
+            // If there's no existing data path, generate one from the template
+            applyDataPathPrefix('', experimentId).then(prefixedPath => {
+                document.getElementById('dataPath').value = prefixedPath;
+            }).catch(() => {
+                // Fallback to empty if template generation fails
+                document.getElementById('dataPath').value = '';
+            });
+        }
+        
+        // Keep DOI unchecked for editing existing experiments
+        document.getElementById('createDoi').checked = false;
+    } else {
+        // Data path is for queue processing
+        document.getElementById('dataPath').value = userFolder !== '' ? userFolder : '';
+        
+        // DOI setting defaults to checked for new queue processing
+        document.getElementById('createDoi').checked = true;
+    }
+    
+    // Reset acknowledgments and PVLogger path
+    document.getElementById('pvLoggerPath').value = '';
+    document.querySelectorAll('.acknowledgment-checkbox').forEach(cb => cb.checked = false);
+    updateSelectedAcknowledgments();
+}
+
+// Add single experiment to queue from modal
+function addSingleExperimentToQueue() {
+    const form = document.getElementById('experimentForm');
+    const formData = new FormData(form);
+    const dataPath = formData.get('dataPath')?.trim();
+    
+    // Show loading state
+    const addToQueueBtn = document.getElementById('addToQueueBtn');
+    const originalButtonContent = addToQueueBtn.innerHTML;
+    addToQueueBtn.disabled = true;
+    
+    // If no path provided, proceed directly (empty path is allowed)
+    if (!dataPath || dataPath === '') {
+        addToQueueBtn.innerHTML = '<i class="bi bi-plus-circle"></i> Adding to Queue...';
+        proceedWithAddToQueue(formData, addToQueueBtn, originalButtonContent);
+        return;
+    }
+    
+    // Path provided - validate it first
+    addToQueueBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Validating...';
+    
+    validateDataPath(dataPath)
+        .then(validationResult => {
+            if (!validationResult.valid) {
+                showNotification('error', `Invalid data path: ${validationResult.message}`);
+                resetAddToQueueButton(addToQueueBtn, originalButtonContent);
+                return;
+            }
+            
+            // Path format is valid - proceed with adding to queue
+            proceedWithAddToQueue(formData, addToQueueBtn, originalButtonContent);
+        })
+        .catch(error => {
+            console.error('Path validation error:', error);
+            showNotification('error', 'Unable to validate data path. Please check the path and try again.');
+            resetAddToQueueButton(addToQueueBtn, originalButtonContent);
+        });
+}
+
+// Helper function to reset the Add to Queue button
+function resetAddToQueueButton(button, originalContent) {
+    button.disabled = false;
+    button.innerHTML = originalContent;
+}
+
+// Proceed with adding experiment to queue after validation
+function proceedWithAddToQueue(formData, addToQueueBtn, originalButtonContent) {
+    // Get selected acknowledgments
+    const selectedAcks = Array.from(document.querySelectorAll('.acknowledgment-checkbox:checked'))
+        .map(cb => cb.value);
+    
+    const experimentData = {
+        experiment_id: currentEditingExperiment,
+        experiment_number: formData.get('experimentNumber'),
+        title: formData.get('title'),
+        data_path: formData.get('dataPath') || null,
+        pvlog_path: formData.get('pvLoggerPath') || null,
+        doi: formData.get('createDoi') === 'on',
+        proposal_number: formData.get('proposalNumber') || null,
+        acknowledgments: selectedAcks
+    };
+    
+    // Update button to show adding state
+    addToQueueBtn.innerHTML = '<i class="bi bi-plus-circle"></i> Adding to Queue...';
+    
+    // Add to queue via existing API
+    fetch('/api/v1/create_update_queue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rows: [experimentData] })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.failure === 0) {
+            showNotification('success', 'Experiment added to queue successfully!');
+            
+            // Update the experiment's status badge in the table
+            updateExperimentStatusBadge(currentEditingExperiment, 'Pending');
+            
+            // Reset button before hiding modal
+            resetAddToQueueButton(addToQueueBtn, originalButtonContent);
+            experimentModal.hide();
+        } else {
+            showNotification('warning', 'Failed to add experiment to queue.');
+            resetAddToQueueButton(addToQueueBtn, originalButtonContent);
+        }
+    })
+    .catch(error => {
+        console.error('Error adding experiment to queue:', error);
+        showNotification('error', 'Failed to add experiment to queue. Please try again.');
+        resetAddToQueueButton(addToQueueBtn, originalButtonContent);
+    });
+}
+
+// Update selected acknowledgments display
+function updateSelectedAcknowledgments() {
+    const selectedCheckboxes = document.querySelectorAll('.acknowledgment-checkbox:checked');
+    const selectedText = document.getElementById('selectedAcknowledgmentsText');
+    const hiddenInput = document.getElementById('selectedAcknowledgments');
+    
+    if (selectedCheckboxes.length === 0) {
+        selectedText.textContent = 'No acknowledgments selected';
+        selectedText.className = 'text-muted';
+        hiddenInput.value = '';
+    } else {
+        const titles = Array.from(selectedCheckboxes).map(cb => 
+            cb.nextElementSibling.textContent.trim()
+        );
+        selectedText.textContent = `${selectedCheckboxes.length} acknowledgment(s) selected: ${titles.join(', ')}`;
+        selectedText.className = 'text-primary';
+        
+        const ids = Array.from(selectedCheckboxes).map(cb => cb.value);
+        hiddenInput.value = JSON.stringify(ids);
+    }
+}
+
+// Open read-only view modal
+function openExperimentViewModal(experimentId) {
+    const row = document.querySelector(`tr[data-experiment-id="${experimentId}"]`);
+    if (!row) return;
+
+    try {
+        // Get full experiment data from the data attribute
+        const experimentDataStr = row.getAttribute('data-experiment-data');
+        if (experimentDataStr) {
+            const experiment = JSON.parse(experimentDataStr);
+            populateViewModalFull(experiment);
+        } else {
+            // Fallback to basic data from DOM
+            const proposal = row.querySelector('.experiment-proposal')?.textContent.trim() || '';
+            const experimentNumber = row.querySelector('.experiment-id')?.textContent.trim() || '';
+            const title = row.querySelector('.experiment-title-text')?.textContent.trim() || '';
+            const statusBadge = row.querySelector('.status-badge');
+            populateViewModalBasic(title, experimentNumber, proposal, statusBadge);
+        }
+    } catch (error) {
+        console.error('Error parsing experiment data:', error);
+        // Fallback to basic data from DOM
+        const proposal = row.querySelector('.experiment-proposal')?.textContent.trim() || '';
+        const experimentNumber = row.querySelector('.experiment-id')?.textContent.trim() || '';
+        const title = row.querySelector('.experiment-title-text')?.textContent.trim() || '';
+        const statusBadge = row.querySelector('.status-badge');
+        populateViewModalBasic(title, experimentNumber, proposal, statusBadge);
+    }
+
+    if (!experimentViewModal) {
+        const viewEl = document.getElementById('experimentViewModal');
+        if (viewEl) experimentViewModal = new bootstrap.Modal(viewEl);
+    }
+    if (experimentViewModal) experimentViewModal.show();
+}
+
+// Populate view modal with basic information (fallback)
+function populateViewModalBasic(title, experimentNumber, proposal, statusBadge) {
+    const titleEl = document.getElementById('detailViewTitle');
+    const esafEl = document.getElementById('detailViewExperimentNumber');
+    const proposalEl = document.getElementById('detailViewProposal');
+    const statusEl = document.getElementById('detailViewStatus');
+    const beamlineEl = document.getElementById('detailViewBeamline');
+    const descriptionEl = document.getElementById('detailViewDescription');
+    const startDateEl = document.getElementById('detailViewStartDate');
+    const endDateEl = document.getElementById('detailViewEndDate');
+    const spokespersonEl = document.getElementById('detailViewSpokesperson');
+    const beamlineContactEl = document.getElementById('detailViewBeamlineContact');
+    const doiEl = document.getElementById('detailViewDoi');
+    const esafPdfEl = document.getElementById('detailViewEsafPdf');
+
+    if (titleEl) titleEl.textContent = title || 'N/A';
+    if (esafEl) esafEl.textContent = experimentNumber || 'N/A';
+    if (proposalEl) proposalEl.textContent = proposal || 'N/A';
+    if (statusEl) {
+        statusEl.innerHTML = '';
+        if (statusBadge) {
+            const clone = statusBadge.cloneNode(true);
+            statusEl.appendChild(clone);
+        } else {
+            statusEl.textContent = 'N/A';
+        }
+    }
+    
+    // Set other fields to N/A for now
+    if (beamlineEl) beamlineEl.textContent = 'N/A';
+    if (descriptionEl) descriptionEl.textContent = 'N/A';
+    if (startDateEl) startDateEl.textContent = 'N/A';
+    if (endDateEl) endDateEl.textContent = 'N/A';
+    if (spokespersonEl) spokespersonEl.textContent = 'N/A';
+    if (beamlineContactEl) beamlineContactEl.textContent = 'N/A';
+    if (doiEl) doiEl.textContent = 'N/A';
+    if (esafPdfEl) esafPdfEl.textContent = 'N/A';
+}
+
+// Populate view modal with full experiment data
+function populateViewModalFull(experiment) {
+    const titleEl = document.getElementById('detailViewTitle');
+    const esafEl = document.getElementById('detailViewExperimentNumber');
+    const proposalEl = document.getElementById('detailViewProposal');
+    const statusEl = document.getElementById('detailViewStatus');
+    const beamlineEl = document.getElementById('detailViewBeamline');
+    const descriptionEl = document.getElementById('detailViewDescription');
+    const startDateEl = document.getElementById('detailViewStartDate');
+    const endDateEl = document.getElementById('detailViewEndDate');
+    const spokespersonEl = document.getElementById('detailViewSpokesperson');
+    const beamlineContactEl = document.getElementById('detailViewBeamlineContact');
+    const doiEl = document.getElementById('detailViewDoi');
+    const esafPdfEl = document.getElementById('detailViewEsafPdf');
+
+    if (titleEl) titleEl.textContent = experiment.title || 'N/A';
+    if (esafEl) esafEl.textContent = experiment.id || 'N/A';
+    if (proposalEl) proposalEl.textContent = experiment.proposal || 'N/A';
+    
+    // Status badge
+    if (statusEl) {
+        statusEl.innerHTML = '';
+        if (experiment.process_status) {
+            const badge = document.createElement('span');
+            badge.className = `status-badge status-${experiment.process_status.toLowerCase().replace(/\s+/g, '-')}`;
+            badge.textContent = experiment.process_status;
+            statusEl.appendChild(badge);
+        } else {
+            statusEl.textContent = 'N/A';
+        }
+    }
+    
+    if (beamlineEl) beamlineEl.textContent = experiment.beamline_name || 'N/A';
+    if (descriptionEl) descriptionEl.textContent = experiment.description || 'N/A';
+    
+    // Format dates
+    if (startDateEl) {
+        startDateEl.textContent = experiment.start_date ? 
+            new Date(experiment.start_date).toLocaleDateString() : 'N/A';
+    }
+    if (endDateEl) {
+        endDateEl.textContent = experiment.end_date ? 
+            new Date(experiment.end_date).toLocaleDateString() : 'N/A';
+    }
+    
+    // Personnel with email links
+    if (spokespersonEl) {
+        if (experiment.spokesperson_name && experiment.spokesperson_name !== 'N/A') {
+            let spokespersonText = experiment.spokesperson_name;
+            if (experiment.spokesperson_email && experiment.spokesperson_email !== 'N/A') {
+                spokespersonEl.innerHTML = `${spokespersonText} <br><small><a href="mailto:${experiment.spokesperson_email}">${experiment.spokesperson_email}</a></small>`;
+            } else {
+                spokespersonEl.textContent = spokespersonText;
+            }
+        } else {
+            spokespersonEl.textContent = 'N/A';
+        }
+    }
+    
+    if (beamlineContactEl) {
+        if (experiment.beamline_contact_name && experiment.beamline_contact_name !== 'N/A') {
+            let contactText = experiment.beamline_contact_name;
+            if (experiment.beamline_contact_email && experiment.beamline_contact_email !== 'N/A') {
+                beamlineContactEl.innerHTML = `${contactText} <br><small><a href="mailto:${experiment.beamline_contact_email}">${experiment.beamline_contact_email}</a></small>`;
+            } else {
+                beamlineContactEl.textContent = contactText;
+            }
+        } else {
+            beamlineContactEl.textContent = 'N/A';
+        }
+    }
+    
+    // DOI with link
+    if (doiEl) {
+        if (experiment.sees_doi && experiment.sees_doi !== 'N/A') {
+            doiEl.innerHTML = `<a href="https://doi.org/${experiment.sees_doi}" target="_blank">${experiment.sees_doi}</a>`;
+        } else {
+            doiEl.textContent = 'N/A';
+        }
+    }
+    
+    // ESAF PDF with link
+    if (esafPdfEl) {
+        if (experiment.esaf_pdf_file && experiment.esaf_pdf_file !== 'N/A') {
+            esafPdfEl.innerHTML = `<a href="${experiment.esaf_pdf_file}" target="_blank">View PDF</a>`;
+        } else {
+            esafPdfEl.textContent = 'N/A';
+        }
+    }
+}
+
+// Initialize table event handlers
+function initializeTableHandlers() {
+    const tableBody = document.getElementById('experimentsTableBody');
+    if (!tableBody) return;
+    
+    // Handle view and edit button clicks
+    tableBody.addEventListener('click', (event) => {
+        if (event.target.closest('.btn-view')) {
+            const experimentId = event.target.closest('.btn-view').getAttribute('data-experiment-id');
+            openExperimentViewModal(experimentId);
+        } else if (event.target.closest('.btn-edit')) {
+            const experimentId = event.target.closest('.btn-edit').getAttribute('data-experiment-id');
+            openExperimentModal(experimentId, 'edit');
+        }
+    });
+    
+    // No bulk selection or processing for now
+}
 
 // Fetch acknowledgment options from the server
 function fetchAcknowledgmentOptions() {
@@ -26,643 +463,60 @@ function fetchAcknowledgmentOptions() {
         })
         .then(data => {
             acknowledgmentOptions = data;
-
-            // Update the acknowledgments list in the modal
-            const acknowledgementsListContainer = document.querySelector('.acknowledgments-list');
-            if (!acknowledgementsListContainer) return;
-
-            // Clear existing options
-            acknowledgementsListContainer.innerHTML = '';
-
-            data.forEach(ack => {
-                const formCheck = document.createElement('div');
-                formCheck.className = 'form-check';
-
-                formCheck.innerHTML = `
-                    <input class="form-check-input" type="checkbox" value="${ack.id}" id="ack${ack.id}">
-                    <label class="form-check-label" for="ack${ack.id}">
-                        ${ack.title}
-                    </label>
-                `;
-
-                acknowledgementsListContainer.appendChild(formCheck);
-            });
+            // Acknowledgments are already rendered in the template
         })
         .catch(error => console.error('Error fetching acknowledgment options:', error));
 }
 
-// Toggle all checkboxes in a table
-function toggleSelectAll(tableId, checked) {
-    const tableBody = document.getElementById(tableId);
-    if (tableBody) {
-        tableBody.querySelectorAll('.select-experiment').forEach(checkbox => {
-            checkbox.checked = checked;
-        });
-    }
+// Path validation with debouncing
+let validationTimeout = null;
+
+function debounceValidation() {
+    clearTimeout(validationTimeout);
+    validationTimeout = setTimeout(validateCurrentPath, 500);
 }
 
-// Update badge counts for delete and create/update buttons
-function updateBadges() {
-    const selectedCount = document.querySelectorAll('#selectedTableBody .select-experiment:checked').length;
-    const deleteCount = document.getElementById('deleteCount');
-    const createUpdateCount = document.getElementById('createUpdateCount');
-
-    if (deleteCount) {
-        deleteCount.textContent = selectedCount;
-        deleteCount.classList.toggle('d-none', selectedCount === 0);
-    }
-
-    if (createUpdateCount) {
-        // Use selectedCount instead of totalRows
-        createUpdateCount.textContent = selectedCount;
-        createUpdateCount.classList.toggle('d-none', selectedCount === 0);
-    }
-}
-
-// Delete selected rows from the table
-function deleteSelectedRows() {
-    const selectedTableBody = document.getElementById('selectedTableBody');
-    if (!selectedTableBody) return;
-
-    const checkboxes = selectedTableBody.querySelectorAll('.select-experiment:checked');
-    checkboxes.forEach(checkbox => {
-        checkbox.closest('tr').remove();
-    });
-
-    updateBadges();
-}
-
-// Move rows between tables
-function moveRows(sourceTableId, targetTableId) {
-    const sourceTableBody = document.getElementById(sourceTableId);
-    const targetTableBody = document.getElementById(targetTableId);
-    if (!sourceTableBody || !targetTableBody) return;
-
-    const selectedRows = Array.from(sourceTableBody.querySelectorAll('.select-experiment:checked'));
+function validateCurrentPath() {
+    const pathInput = document.getElementById('dataPath');
+    const path = pathInput.value.trim();
     
-    // If moving to selected table, ensure we have the current data path template
-    if (targetTableId === 'selectedTableBody') {
-        ensureDataPathTemplate().then(() => {
-            processRowMove();
-        }).catch(() => {
-            // Proceed without template if fetch fails
-            processRowMove();
-        });
-    } else {
-        processRowMove();
+    if (!path) {
+        clearValidationMessage();
+        return;
     }
-
-    function processRowMove() {
-        selectedRows.forEach(checkbox => {
-            const row = checkbox.closest('tr');
-            
-            if (targetTableId === 'availableTableBody') {
-                // Only move back rows that came from the available table
-                // Check if the status is "New" which indicates it was manually created
-                const status = row.querySelector('td:nth-child(9)').textContent.trim();
-                if (status === 'New') {
-                    // Skip moving manually created rows
-                    return;
-                }
-
-                // Moving back to available table - restore original format
-                const title = row.querySelector('td:nth-child(2) input').value.trim();
-                const experimentId = row.querySelector('td:nth-child(7) input').value.trim();
-                const proposal = row.querySelector('td:nth-child(8) input').value.trim();
-                const userFolder = row.querySelector('td:nth-child(3) input').value.trim();
-
-                const newRow = document.createElement('tr');
-                newRow.className = 'experiment-row';
-                newRow.dataset.userFolder = userFolder;
-                newRow.innerHTML = `
-                    <td>
-                        <input type="checkbox" class="select-experiment" 
-                               name="selected_experiments" 
-                               value="${experimentId}">
-                    </td>
-                    <td>${title}</td>
-                    <td>${experimentId}</td>
-                    <td>${proposal}</td>
-                    <td>${status}</td>
-                `;
-                targetTableBody.appendChild(newRow);
-                row.remove();
-            } else {
-                // Moving to selected table - convert to editable format
-                const title = row.querySelector('td:nth-child(2)').textContent.trim();
-                const experimentId = row.querySelector('td:nth-child(3)').textContent.trim();
-                const proposal = row.querySelector('td:nth-child(4)').textContent.trim();
-                const status = row.querySelector('td:nth-child(5)').textContent.trim();
-                const userFolder = row.dataset.userFolder || '';
-                const runId = row.dataset.run || '';
-
-                // Extract run number from runId (e.g., "2025-1" -> "1")
-                const runNumber = runId.includes('-') ? runId.split('-').pop() : runId;
-
-                // Use template path with run number context
-                const formattedDataPath = dataPathTemplate ? 
-                    formatDataPath(dataPathTemplate, { runId: runNumber }) : 
-                    userFolder;
-
-                const newRow = document.createElement('tr');
-                newRow.innerHTML = `
-                    <td><input type="checkbox" class="select-experiment" checked></td>
-                    <td><input type="text" class="form-control" value="${title}" placeholder="Title"></td>
-                    <td><input type="text" class="form-control editable-data-path" value="${formattedDataPath}" style="width: 100%;"></td>
-                    <td><input type="text" class="form-control editable-pvlogger-path" value="" style="width: 100%;"></td>
-                    <td>
-                        <input type="text" class="form-control editable-acknowledgments" readonly placeholder="Click to add acknowledgments">
-                        <div class="acknowledgments-tooltip"></div>
-                        <input type="hidden" class="acknowledgments-data">
-                    </td>
-                    <td><input type="checkbox" class="doi-checkbox" checked></td>
-                    <td><input type="text" class="form-control" value="${experimentId}" placeholder="Experiment"></td>
-                    <td><input type="text" class="form-control" value="${proposal}" placeholder="Proposal"></td>
-                    <td>${status}</td>
-                `;
-                targetTableBody.appendChild(newRow);
-                row.remove();
+    
+    updateValidationMessage('muted', 'Validating...');
+    
+    validateDataPath(path)
+        .then(result => {
+            if (result.valid === false) {
+                updateValidationMessage('danger', result.message);
+            } else if (result.exists === true) {
+                updateValidationMessage('warning', result.message);
+            } else if (result.exists === false) {
+                updateValidationMessage('success', result.message);
             }
-        });
-
-        updateBadges();
-    }
-}
-
-// Initialize modal for editing Data Path
-function initializeDataPathModal() {
-    const dataPathModal = new bootstrap.Modal(document.getElementById('dataPathModal'));
-    const dataPathInput = document.getElementById('dataPathInput');
-    const saveDataPathButton = document.getElementById('saveDataPathButton');
-    const pathValidationMessage = document.getElementById('pathValidationMessage');
-    let currentDataPathInput = null;
-    let validationTimeout = null;
-
-    // Function to update validation message
-    function updateValidationMessage(exists, valid, message) {
-        if (!pathValidationMessage) return;
-        
-        pathValidationMessage.textContent = message;
-        
-        // Remove existing classes
-        pathValidationMessage.classList.remove('text-success', 'text-warning', 'text-danger', 'text-muted');
-        
-        if (valid === false) {
-            // Invalid path format
-            pathValidationMessage.classList.add('text-danger');
-        } else if (exists === true) {
-            // Path exists - warning
-            pathValidationMessage.classList.add('text-warning');
-        } else if (exists === false) {
-            // Path available - success
-            pathValidationMessage.classList.add('text-success');
-        } else {
-            // Unknown state or validating
-            pathValidationMessage.classList.add('text-muted');
-        }
-    }
-
-    // Function to validate path with debouncing
-    function validatePath() {
-        const path = dataPathInput.value;
-        
-        if (validationTimeout) {
-            clearTimeout(validationTimeout);
-        }
-        
-        if (!path || !path.trim()) {
-            updateValidationMessage(null, null, '');
-            return;
-        }
-        
-        updateValidationMessage(null, null, 'Validating...');
-        
-        validationTimeout = setTimeout(() => {
-            validateDataPath(path)
-                .then(result => {
-                    updateValidationMessage(result.exists, result.valid, result.message);
-                })
-                .catch(error => {
-                    console.error('Validation error:', error);
-                    updateValidationMessage(null, false, 'Validation failed');
-                });
-        }, 500); // 500ms debounce delay
-    }
-
-    document.getElementById('selectedTableBody').addEventListener('click', event => {
-        const input = event.target.closest('.editable-data-path');
-        if (input) {
-            currentDataPathInput = input;
-            dataPathInput.value = input.value || '';
-            
-            // Clear any existing timeout
-            if (validationTimeout) {
-                clearTimeout(validationTimeout);
-            }
-            
-            // Validate the current path
-            validatePath();
-            
-            dataPathModal.show();
-        }
-    });
-
-    // Add input event listener for real-time validation
-    dataPathInput.addEventListener('input', validatePath);
-
-    saveDataPathButton.addEventListener('click', () => {
-        if (currentDataPathInput) {
-            currentDataPathInput.value = dataPathInput.value;
-            dataPathModal.hide();
-        }
-    });
-
-    // Clear validation when modal is hidden
-    dataPathModal._element.addEventListener('hidden.bs.modal', () => {
-        if (validationTimeout) {
-            clearTimeout(validationTimeout);
-        }
-        updateValidationMessage(null, null, '');
-    });
-}
-
-// TODO: Not fully implemented yet
-// Initialize modal for editing PVLogger Path
-function initializePvLoggerPathModal() {
-    const pvLoggerPathModal = new bootstrap.Modal(document.getElementById('pvLoggerPathModal'));
-    const pvLoggerPathInput = document.getElementById('pvLoggerPathInput');
-    const savePvLoggerPathButton = document.getElementById('savePvLoggerPathButton');
-    let currentPvLoggerPathInput = null;
-
-    document.getElementById('selectedTableBody').addEventListener('click', event => {
-        const input = event.target.closest('.editable-pvlogger-path');
-        if (input) {
-            currentPvLoggerPathInput = input;
-            pvLoggerPathInput.value = input.value || '';
-            pvLoggerPathModal.show();
-        }
-    });
-
-    savePvLoggerPathButton.addEventListener('click', () => {
-        if (currentPvLoggerPathInput) {
-            currentPvLoggerPathInput.value = pvLoggerPathInput.value;
-            pvLoggerPathModal.hide();
-        }
-    });
-}
-
-// Initialize modal for editing Acknowledgments
-function initializeAcknowledgmentsModal() {
-    const acknowledgementsModal = new bootstrap.Modal(document.getElementById('acknowledgementsModal'));
-    const saveAcknowledgmentsButton = document.getElementById('saveAcknowledgmentsButton');
-    let currentAcknowledgmentsInput = null;
-    let currentAcknowledgmentsData = null;
-
-    document.querySelector('.acknowledgments-list').addEventListener('click', event => {
-        const formCheck = event.target.closest('.form-check');
-        if (formCheck) {
-            const checkbox = formCheck.querySelector('.form-check-input');
-            if (event.target !== checkbox) {
-                checkbox.checked = !checkbox.checked;
-            }
-        }
-    });
-
-    document.getElementById('selectedTableBody').addEventListener('click', event => {
-        const input = event.target.closest('.editable-acknowledgments');
-        if (input) {
-            currentAcknowledgmentsInput = input;
-            currentAcknowledgmentsData = input.nextElementSibling.nextElementSibling;
-            
-            document.querySelectorAll('.acknowledgments-list .form-check-input').forEach(checkbox => {
-                checkbox.checked = false;
-            });
-
-            if (currentAcknowledgmentsData.value) {
-                const selectedAcks = JSON.parse(currentAcknowledgmentsData.value);
-                selectedAcks.forEach(ackId => {
-                    const checkbox = document.getElementById(`ack${ackId}`);
-                    if (checkbox) {
-                        checkbox.checked = true;
-                    }
-                });
-            }
-
-            acknowledgementsModal.show();
-        }
-    });
-
-    saveAcknowledgmentsButton.addEventListener('click', () => {
-        if (currentAcknowledgmentsInput && currentAcknowledgmentsData) {
-            const selectedAcks = [];
-            const selectedTitles = [];
-            
-            document.querySelectorAll('.acknowledgments-list .form-check-input:checked').forEach(checkbox => {
-                selectedAcks.push(checkbox.value);
-                selectedTitles.push(checkbox.nextElementSibling.textContent.trim());
-            });
-
-            currentAcknowledgmentsData.value = JSON.stringify(selectedAcks);
-            currentAcknowledgmentsInput.value = selectedTitles.length > 0 
-                ? selectedTitles.length + ' acknowledgment(s) selected'
-                : '';
-            acknowledgementsModal.hide();
-        }
-    });
-}
-
-// Handle Create/Update button click
-function handleCreateUpdate() {
-    const selectedTableBody = document.getElementById('selectedTableBody');
-    if (!selectedTableBody) return;
-
-    const rows = Array.from(selectedTableBody.querySelectorAll('tr')).map(row => {
-        const getValue = (selector) => row.querySelector(selector)?.value?.trim() || null;
-        const getChecked = (selector) => row.querySelector(selector)?.checked || false;
-        
-        const data = {
-            experiment_number: getValue('td:nth-child(7) input'),
-            title: getValue('td:nth-child(2) input'),
-            data_path: getValue('td:nth-child(3) input'),
-            pvlog_path: getValue('td:nth-child(4) input'),
-            doi: getChecked('td:nth-child(6) input'),
-            proposal_number: getValue('td:nth-child(8) input'),
-            acknowledgments: (() => {
-                const ackData = row.querySelector('.acknowledgments-data');
-                if (ackData && ackData.value) {
-                    try {
-                        return JSON.parse(ackData.value);
-                    } catch (e) {
-                        return [];
-                    }
-                }
-                return [];
-            })()
-        };
-
-        return Object.values(data).some(value => 
-            value !== null && value !== false && 
-            (Array.isArray(value) ? value.length > 0 : true)
-        ) ? data : null;
-    }).filter(Boolean);
-
-    if (rows.length === 0) return;
-
-    fetch('/api/v1/create_update_queue', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rows })
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.failure === 0) {
-            selectedTableBody.innerHTML = '';
-            updateBadges();
-            showNotification('Success', `Successfully added ${result.success} rows to the queue.`);
-        } else {
-            showNotification('Warning', `Added ${result.success} rows to the queue, but ${result.failure} rows failed.`);
-        }
-    })
-    .catch(error => {
-        console.error('Error adding rows to the queue:', error);
-        showNotification('Error', 'An error occurred while adding rows to the queue.');
-    });
-}
-
-// Initialize table handlers
-function initializeTableHandlers() {
-    const buttons = {
-        moveDown: document.getElementById('moveDown'),
-        moveUp: document.getElementById('moveUp'),
-        addNew: document.getElementById('addNewRow'),
-        delete: document.getElementById('deleteRow'),
-        createUpdate: document.getElementById('createUpdate'),
-        selectAllAvailable: document.getElementById('selectAllAvailable'),
-        selectAllSelected: document.getElementById('selectAllSelected')
-    };
-
-    if (buttons.moveDown) {
-        buttons.moveDown.addEventListener('click', () => moveRows('availableTableBody', 'selectedTableBody'));
-    }
-
-    if (buttons.moveUp) {
-        buttons.moveUp.addEventListener('click', () => moveRows('selectedTableBody', 'availableTableBody'));
-    }
-
-    if (buttons.addNew) {
-        buttons.addNew.addEventListener('click', () => {
-            const selectedTableBody = document.getElementById('selectedTableBody');
-            if (selectedTableBody) {
-                // Ensure we have the current data path template before creating new row
-                ensureDataPathTemplate().then(() => {
-                    selectedTableBody.appendChild(createRow());
-                    updateBadges();
-                }).catch(() => {
-                    // Proceed without template if fetch fails
-                    selectedTableBody.appendChild(createRow());
-                    updateBadges();
-                });
-            }
-        });
-    }
-
-    if (buttons.delete) {
-        buttons.delete.addEventListener('click', deleteSelectedRows);
-    }
-
-    if (buttons.createUpdate) {
-        buttons.createUpdate.addEventListener('click', handleCreateUpdate);
-    }
-
-    if (buttons.selectAllAvailable) {
-        buttons.selectAllAvailable.addEventListener('change', () => {
-            toggleSelectAll('availableTableBody', buttons.selectAllAvailable.checked);
-        });
-    }
-
-    if (buttons.selectAllSelected) {
-        buttons.selectAllSelected.addEventListener('change', () => {
-            toggleSelectAll('selectedTableBody', buttons.selectAllSelected.checked);
-            updateBadges();
-        });
-    }
-
-    const selectedTableBody = document.getElementById('selectedTableBody');
-    if (selectedTableBody) {
-        selectedTableBody.addEventListener('change', event => {
-            if (event.target.classList.contains('select-experiment')) {
-                updateBadges();
-            }
-        });
-    }
-}
-
-// Initialize modals
-function initializeModals() {
-    initializeDataPathModal();
-    initializePvLoggerPathModal();
-    initializeAcknowledgmentsModal();
-}
-
-// Function to ensure we have the current data path template
-function ensureDataPathTemplate() {
-    const stationSelect = document.getElementById('stationSelect');
-    const techniqueSelect = document.getElementById('techniqueSelect');
-    
-    if (!stationSelect || !techniqueSelect) {
-        return Promise.reject('Station or technique select not found');
-    }
-    
-    const stationId = stationSelect.value;
-    const techniqueId = techniqueSelect.value;
-    
-    if (!stationId || !techniqueId) {
-        return Promise.reject('Station or technique not selected');
-    }
-    
-    // Only fetch if we don't have a template or if the selection has changed
-    return fetchDataPathTemplate(stationId, techniqueId);
-}
-
-// Function to update data paths for existing rows in selected table
-function updateDataPathForExistingRows() {
-    const selectedTableBody = document.getElementById('selectedTableBody');
-    if (!selectedTableBody || !dataPathTemplate) return;
-    
-    const rows = selectedTableBody.querySelectorAll('tr');
-    rows.forEach(row => {
-        const dataPathInput = row.querySelector('.editable-data-path');
-        const experimentInput = row.querySelector('td:nth-child(7) input');
-        
-        if (dataPathInput && experimentInput) {
-            const experimentId = experimentInput.value;
-            const runMatch = experimentId.match(/\d+/);
-            const runId = runMatch ? runMatch[0] : '';
-            
-            // Only update if the current value looks like it was generated from a template
-            // (to avoid overwriting user-modified paths)
-            const currentValue = dataPathInput.value;
-            if (!currentValue || currentValue.includes('{') || currentValue.includes('/data/') || currentValue.includes('Run')) {
-                dataPathInput.value = formatDataPath(dataPathTemplate, { runId: runId });
-            }
-        }
-    });
-}
-
-// Auto-submit filter form on dropdown change and fetch data path template
-function initializeFilterFormAutoSubmit() {
-    const filterForm = document.getElementById('filterForm');
-    const stationSelect = document.getElementById('stationSelect');
-    const techniqueSelect = document.getElementById('techniqueSelect');
-    
-    if (filterForm) {
-        const selects = filterForm.querySelectorAll('select');
-        selects.forEach(select => {
-            select.addEventListener('change', () => {
-                filterForm.submit();
-            });
-        });
-    }
-    
-    // Listen for station/technique changes to update data path template
-    if (stationSelect && techniqueSelect) {
-        const handleTemplateUpdate = () => {
-            const stationId = stationSelect.value;
-            const techniqueId = techniqueSelect.value;
-            
-            if (stationId && techniqueId) {
-                fetchDataPathTemplate(stationId, techniqueId)
-                    .then(() => {
-                        updateDataPathForExistingRows();
-                    })
-                    .catch(error => {
-                        console.log('Could not fetch data path template:', error);
-                    });
-            }
-        };
-        
-        stationSelect.addEventListener('change', handleTemplateUpdate);
-        techniqueSelect.addEventListener('change', handleTemplateUpdate);
-        
-        // Initial load if both are already selected
-        if (stationSelect.value && techniqueSelect.value) {
-            handleTemplateUpdate();
-        }
-    }
-}
-
-function createRow() {
-    // Get the run number from the selected run dropdown
-    const runSelect = document.getElementById('runSelect');
-    let runNumber = '';
-    
-    if (runSelect && runSelect.value) {
-        // Get the selected option text (which contains the run name like "2025-1")
-        const selectedOption = runSelect.options[runSelect.selectedIndex];
-        if (selectedOption && selectedOption.text !== 'All') {
-            const runName = selectedOption.text;
-            // Extract run number from runName (e.g., "2025-1" -> "1")
-            runNumber = runName.includes('-') ? runName.split('-').pop() : runName;
-        }
-    }
-    
-    // Use the current data path template for new rows with run context
-    const formattedDataPath = formatDataPath(dataPathTemplate, { runId: runNumber });
-    
-    const row = document.createElement('tr');
-    row.innerHTML = `
-        <td><input type="checkbox" class="select-experiment" checked></td>
-        <td><input type="text" class="form-control" placeholder="Title"></td>
-        <td><input type="text" class="form-control editable-data-path" value="${formattedDataPath}" style="width: 100%;"></td>
-        <td><input type="text" class="form-control editable-pvlogger-path" value="" style="width: 100%;"></td>
-        <td>
-            <input type="text" class="form-control editable-acknowledgments" readonly placeholder="Click to add acknowledgments">
-            <div class="acknowledgments-tooltip"></div>
-            <input type="hidden" class="acknowledgments-data">
-        </td>
-        <td><input type="checkbox" class="doi-checkbox" checked></td>
-        <td><input type="text" class="form-control" placeholder="Experiment"></td>
-        <td><input type="text" class="form-control" placeholder="Proposal"></td>
-        <td>New</td>
-    `;
-    return row;
-}
-
-function showNotification(type, message) {
-    // You can implement this function to show notifications in a more user-friendly way
-    // For now, we'll use alert
-    alert(message);
-}
-
-// Format data path based on template and experiment data
-function formatDataPath(template, experimentData = {}) {
-    if (!template) return '';
-
-    const currentYear = new Date().getFullYear();
-    const runId = experimentData.runId || '';
-
-    return template
-        .replace(/{YEAR}/g, currentYear)
-        .replace(/{RUN}/g, runId);
-}
-
-// Function to fetch and store the data path template
-function fetchDataPathTemplate(stationId, techniqueId) {
-    if (!stationId || !techniqueId) return Promise.reject('Missing required parameters');
-
-    console.log(`Fetching data path for station: ${stationId}, technique: ${techniqueId}`);
-    return fetch(`/api/v1/get_data_path?station_id=${stationId}&technique_id=${techniqueId}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Server responded with ${response.status}`);
-            }
-            return response.text();
         })
-        .then(template => {
-            console.log(`Received template: "${template}"`);
-            dataPathTemplate = template;
-            return template;
+        .catch(error => {
+            console.error('Validation error:', error);
+            updateValidationMessage('danger', 'Validation failed');
         });
+}
+
+function updateValidationMessage(type, message) {
+    const messageEl = document.getElementById('pathValidationMessage');
+    if (!messageEl) return;
+    
+    messageEl.textContent = message;
+    messageEl.className = `small text-${type}`;
+}
+
+function clearValidationMessage() {
+    const messageEl = document.getElementById('pathValidationMessage');
+    if (messageEl) {
+        messageEl.textContent = '';
+        messageEl.className = 'small';
+    }
 }
 
 // Function to validate if a data path exists
@@ -710,52 +564,268 @@ function validateDataPath(path) {
     });
 }
 
+// Function to ensure we have the current data path template
+function ensureDataPathTemplate() {
+    const stationSelect = document.getElementById('stationSelect');
+    const techniqueSelect = document.getElementById('techniqueSelect');
+    
+    if (!stationSelect || !techniqueSelect) {
+        return Promise.reject('Station or technique select not found');
+    }
+    
+    const stationId = stationSelect.value;
+    const techniqueId = techniqueSelect.value;
+    
+    if (!stationId || !techniqueId) {
+        return Promise.reject('Station or technique not selected');
+    }
+    
+    return fetchDataPathTemplate(stationId, techniqueId);
+}
 
-function initializeSortHandlers() {
-    const sortIcons = document.querySelectorAll('.sort-icons');
+// Function to fetch and store the data path template
+function fetchDataPathTemplate(stationId, techniqueId) {
+    if (!stationId || !techniqueId) return Promise.reject('Missing required parameters');
 
-    sortIcons.forEach(iconGroup => {
-        const column = iconGroup.dataset.column;
-        const up = iconGroup.querySelector('.sort-up');
-        const down = iconGroup.querySelector('.sort-down');
-
-        up.addEventListener('click', () => {
-            updateSortState(column, 'asc');
-            updateSortUI();
-            sortTableByState('availableTableBody');
+    console.log(`Fetching data path for station: ${stationId}, technique: ${techniqueId}`);
+    return fetch(`/api/v1/get_data_path?station_id=${stationId}&technique_id=${techniqueId}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Server responded with ${response.status}`);
+            }
+            return response.text();
+        })
+        .then(template => {
+            console.log(`Received template: "${template}"`);
+            dataPathTemplate = template;
+            return template;
         });
+}
 
-        down.addEventListener('click', () => {
-            updateSortState(column, 'desc');
+// Format data path based on template and experiment data
+function formatDataPath(template, experimentData = {}) {
+    if (!template) return '';
+
+    const currentYear = new Date().getFullYear();
+    const runId = experimentData.runId || '';
+
+    return template
+        .replace(/{YEAR}/g, currentYear)
+        .replace(/{RUN}/g, runId);
+}
+
+// Apply data path prefix based on station and technique
+function applyDataPathPrefix(originalPath, experimentId) {
+    return new Promise((resolve, reject) => {
+        const stationSelect = document.getElementById('stationSelect');
+        const techniqueSelect = document.getElementById('techniqueSelect');
+        const runSelect = document.getElementById('runSelect');
+        
+        // Check if we have station and technique selected
+        if (!stationSelect || !techniqueSelect || !stationSelect.value || !techniqueSelect.value) {
+            console.log('Station or technique not selected, using original path');
+            resolve(originalPath);
+            return;
+        }
+        
+        const stationId = stationSelect.value;
+        const techniqueId = techniqueSelect.value;
+        
+        // Get run number for template variable replacement
+        let runNumber = '';
+        if (runSelect && runSelect.value) {
+            const selectedOption = runSelect.options[runSelect.selectedIndex];
+            if (selectedOption && selectedOption.text !== 'All') {
+                const runName = selectedOption.text;
+                runNumber = runName.includes('-') ? runName.split('-').pop() : runName;
+            }
+        }
+        
+        // Fetch the data path template
+        fetchDataPathTemplate(stationId, techniqueId)
+            .then(template => {
+                if (!template || template.trim() === '') {
+                    console.log('No template found, using original path');
+                    resolve(originalPath);
+                    return;
+                }
+                
+                // Format the template with current year and run
+                const formattedPrefix = formatDataPath(template, { runId: runNumber });
+                
+                // Combine prefix with original path
+                // If originalPath starts with the formattedPrefix, don't duplicate it
+                if (originalPath.startsWith(formattedPrefix)) {
+                    resolve(originalPath);
+                } else {
+                    // Add a separator if needed
+                    const separator = formattedPrefix.endsWith('/') || formattedPrefix.endsWith('\\') || originalPath.startsWith('/') || originalPath.startsWith('\\') ? '' : '/';
+                    const combinedPath = formattedPrefix + separator + originalPath;
+                    resolve(combinedPath);
+                }
+            })
+            .catch(error => {
+                console.log('Failed to fetch template:', error);
+                reject(error);
+            });
+    });
+}
+
+// Search functionality
+let searchTimeout = null;
+
+function initializeSearchFunctionality() {
+    const searchInput = document.getElementById('searchInput');
+    if (!searchInput) return;
+    
+    // Real-time search with debouncing
+    searchInput.addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            performClientSideSearch(searchInput.value);
+        }, 300);
+    });
+    
+    // Initial search if there's a value
+    if (searchInput.value.trim()) {
+        performClientSideSearch(searchInput.value);
+    }
+}
+
+function performClientSideSearch(searchTerm) {
+    const tableBody = document.getElementById('experimentsTableBody');
+    const rows = tableBody.querySelectorAll('.experiment-row');
+    const term = searchTerm.toLowerCase().trim();
+    
+    rows.forEach(row => {
+        if (!term) {
+            row.style.display = '';
+            return;
+        }
+        
+        // Search across proposal, experiment ID, and title
+        const proposal = row.querySelector('.experiment-proposal').textContent.toLowerCase();
+        const experimentId = row.querySelector('.experiment-id').textContent.toLowerCase();
+        const title = row.querySelector('.experiment-title').textContent.toLowerCase();
+        
+        const matches = proposal.includes(term) || 
+                       experimentId.includes(term) || 
+                       title.includes(term);
+        
+        row.style.display = matches ? '' : 'none';
+    });
+}
+
+// Auto-submit filter form on dropdown change
+function initializeFilterFormAutoSubmit() {
+    const filterForm = document.getElementById('filterForm');
+    const stationSelect = document.getElementById('stationSelect');
+    const techniqueSelect = document.getElementById('techniqueSelect');
+    const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+    
+    if (filterForm) {
+        const selects = filterForm.querySelectorAll('select');
+        selects.forEach(select => {
+            select.addEventListener('change', () => {
+                filterForm.submit();
+            });
+        });
+    }
+    
+    // Clear filters functionality
+    if (clearFiltersBtn) {
+        clearFiltersBtn.addEventListener('click', () => {
+            if (filterForm) {
+                const selects = filterForm.querySelectorAll('select');
+                const searchInput = document.getElementById('searchInput');
+                
+                selects.forEach(select => {
+                    select.value = '';
+                });
+                
+                if (searchInput) {
+                    searchInput.value = '';
+                    // Trigger search to show all rows
+                    performClientSideSearch('');
+                }
+                
+                filterForm.submit();
+            }
+        });
+    }
+    
+    // Listen for station/technique changes to update data path template
+    if (stationSelect && techniqueSelect) {
+        const handleTemplateUpdate = () => {
+            const stationId = stationSelect.value;
+            const techniqueId = techniqueSelect.value;
+            
+            if (stationId && techniqueId) {
+                fetchDataPathTemplate(stationId, techniqueId)
+                    .catch(error => {
+                        console.log('Could not fetch data path template:', error);
+                    });
+            }
+        };
+        
+        stationSelect.addEventListener('change', handleTemplateUpdate);
+        techniqueSelect.addEventListener('change', handleTemplateUpdate);
+        
+        // Initial load if both are already selected
+        if (stationSelect.value && techniqueSelect.value) {
+            handleTemplateUpdate();
+        }
+    }
+}
+
+// Sorting functionality
+function initializeSortHandlers() {
+    const sortableHeaders = document.querySelectorAll('.sortable-header');
+
+    sortableHeaders.forEach(header => {
+        const column = header.dataset.column;
+        
+        header.addEventListener('click', () => {
+            // Determine next sort direction
+            const currentSort = currentSortState.find(s => s.column === column);
+            let nextDirection = 'asc';
+            
+            if (currentSort) {
+                nextDirection = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            }
+            
+            updateSortState(column, nextDirection);
             updateSortUI();
-            sortTableByState('availableTableBody');
+            sortTableByState('experimentsTableBody');
         });
     });
 }
 
 function updateSortState(column, direction) {
-    currentSortState = currentSortState.filter(item => item.column !== column);
-    currentSortState.unshift({ column, direction });
+    // Clear all previous sorts - only show one column sorted at a time
+    currentSortState = [{ column, direction }];
 }
 
 function updateSortUI() {
-    document.querySelectorAll('.sort-icons').forEach(iconGroup => {
-        const column = iconGroup.dataset.column;
-        const up = iconGroup.querySelector('.sort-up');
-        const down = iconGroup.querySelector('.sort-down');
-        up.classList.remove('active');
-        down.classList.remove('active');
-
-        const sort = currentSortState.find(s => s.column === column);
-        if (sort) {
-            if (sort.direction === 'asc') up.classList.add('active');
-            else if (sort.direction === 'desc') down.classList.add('active');
-        }
+    // Clear all sort classes from all headers first
+    document.querySelectorAll('.sortable-header').forEach(header => {
+        header.classList.remove('sort-asc', 'sort-desc');
     });
+    
+    // Then apply the current sort class to the active column
+    if (currentSortState.length > 0) {
+        const activeSort = currentSortState[0];
+        const activeHeader = document.querySelector(`[data-column="${activeSort.column}"]`);
+        if (activeHeader) {
+            activeHeader.classList.add(`sort-${activeSort.direction}`);
+        }
+    }
 }
 
 function sortTableByState(tableId) {
     const tableBody = document.getElementById(tableId);
+    if (!tableBody) return;
+    
     const rows = Array.from(tableBody.querySelectorAll('tr'));
 
     rows.sort((a, b) => {
@@ -775,25 +845,118 @@ function sortTableByState(tableId) {
 
 function getCellValue(row, column) {
     switch (column) {
-        case 'title':
-            return row.querySelector('td:nth-child(2) input')?.textContent.trim().toLowerCase() || '';
-        case 'experiment':
-            return row.querySelector('td:nth-child(3) input')?.value.trim() || '';
         case 'proposal':
-            return row.querySelector('td:nth-child(4) input')?.value.trim() || '';
+            return row.querySelector('.experiment-proposal')?.textContent.trim() || '';
+        case 'experiment':
+            return row.querySelector('.experiment-id')?.textContent.trim() || '';
+        case 'title':
+            return row.querySelector('.experiment-title-text')?.textContent.trim().toLowerCase() || '';
         case 'status':
-            return row.querySelector('td:nth-child(5)')?.textContent.trim().toLowerCase() || '';
+            return row.querySelector('.status-badge')?.textContent.trim().toLowerCase() || '';
         default: 
             return '';
     }
 }
 
+// Update experiment status badge in the table
+function updateExperimentStatusBadge(experimentId, newStatus) {
+    const row = document.querySelector(`tr[data-experiment-id="${experimentId}"]`);
+    if (!row) {
+        console.warn(`Could not find table row for experiment ${experimentId}`);
+        return;
+    }
+    
+    const statusBadge = row.querySelector('.status-badge');
+    if (!statusBadge) {
+        console.warn(`Could not find status badge for experiment ${experimentId}`);
+        return;
+    }
+    
+    // Update the badge text and CSS class
+    statusBadge.textContent = newStatus;
+    
+    // Remove existing status-* classes but keep the base 'status-badge' class
+    const classList = statusBadge.className.split(' ');
+    const filteredClasses = classList.filter(cls => !cls.startsWith('status-') || cls === 'status-badge');
+    
+    // Add new status class
+    const statusClass = `status-${newStatus.toLowerCase().replace(/\s+/g, '-')}`;
+    filteredClasses.push(statusClass);
+    
+    // Apply the updated class list
+    statusBadge.className = filteredClasses.join(' ');
+    
+    // Add a subtle animation to indicate the change
+    statusBadge.style.transition = 'all 0.3s ease';
+    statusBadge.style.transform = 'scale(1.1)';
+    
+    setTimeout(() => {
+        statusBadge.style.transform = 'scale(1)';
+    }, 300);
+    
+    console.log(`Updated status badge for experiment ${experimentId} to "${newStatus}"`);
+}
+
+// Show notification using Bootstrap toast
+function showNotification(type, message) {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+        toastContainer.style.zIndex = '1055';
+        document.body.appendChild(toastContainer);
+    }
+
+    // Create unique toast ID
+    const toastId = 'toast-' + Date.now();
+    
+    // Map types to Bootstrap classes and icons
+    const typeConfig = {
+        'success': { class: 'text-bg-success', icon: 'bi-check-circle-fill' },
+        'error': { class: 'text-bg-danger', icon: 'bi-exclamation-triangle-fill' },
+        'warning': { class: 'text-bg-warning', icon: 'bi-exclamation-triangle-fill' },
+        'info': { class: 'text-bg-info', icon: 'bi-info-circle-fill' }
+    };
+    
+    const config = typeConfig[type] || typeConfig['info'];
+    
+    // Create toast HTML
+    const toastHTML = `
+        <div id="${toastId}" class="toast ${config.class}" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="4000">
+            <div class="toast-header ${config.class}">
+                <i class="bi ${config.icon} me-2"></i>
+                <strong class="me-auto text-capitalize">${type}</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">
+                ${message}
+            </div>
+        </div>
+    `;
+    
+    // Add toast to container
+    toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+    
+    // Initialize and show toast
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement);
+    toast.show();
+    
+    // Remove toast from DOM after it's hidden
+    toastElement.addEventListener('hidden.bs.toast', () => {
+        toastElement.remove();
+    });
+}
+
 // Initialize the application
 document.addEventListener('DOMContentLoaded', () => {
     fetchAcknowledgmentOptions();
+    initializeExperimentModal();
     initializeTableHandlers();
-    initializeModals();
-    updateBadges();
     initializeFilterFormAutoSubmit();
     initializeSortHandlers();
+    initializeSearchFunctionality();
+    updateBulkActionButtons();
 });

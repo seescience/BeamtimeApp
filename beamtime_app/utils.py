@@ -23,9 +23,10 @@ def to_dictionary(obj: any) -> dict[str, any]:
 
 
 def format_experiment_data(experiments: list[dict[str, any]]) -> list[dict[str, any]]:
-    """Formats experiment data."""
+    """Formats experiment data while preserving all fields."""
     return [
         {
+            # Core fields for table display
             "id": exp.get("id", None),
             "title": exp.get("title", "N/A"),
             "run_id": exp.get("run_id", None),
@@ -33,6 +34,17 @@ def format_experiment_data(experiments: list[dict[str, any]]) -> list[dict[str, 
             "proposal": exp.get("proposal_id", "N/A"),
             "process_status": exp.get("process_status", "N/A"),
             "folder": exp.get("folder", "N/A"),
+            # Additional fields for view modal
+            "beamline_name": exp.get("beamline_name", "N/A"),
+            "description": exp.get("description", "N/A"),
+            "start_date": exp.get("start_date"),
+            "end_date": exp.get("end_date"),
+            "sees_doi": exp.get("sees_doi", "N/A"),
+            "esaf_pdf_file": exp.get("esaf_pdf_file", "N/A"),
+            "spokesperson_name": exp.get("spokesperson_name", "N/A"),
+            "spokesperson_email": exp.get("spokesperson_email", "N/A"),
+            "beamline_contact_name": exp.get("beamline_contact_name", "N/A"),
+            "beamline_contact_email": exp.get("beamline_contact_email", "N/A"),
         }
         for exp in experiments
     ]
