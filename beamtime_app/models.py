@@ -14,32 +14,20 @@
 
 import datetime
 from dataclasses import dataclass, field
-from typing import Any, Dict
+from typing import Any
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from beamtime_app.database import BASE
 
-__all__ = [
-    "Acknowledgment",
-    "Beamline",
-    "DataPath",
-    "Experiment",
-    "Info",
-    "Person",
-    "ProcessStatus",
-    "Queue",
-    "Run",
-    "Station",
-    "Technique",
-]
+__all__ = ["Info", "Acknowledgment", "Technique", "Station", "DataPath", "Run", "Beamline", "Experiment", "Person", "ProcessStatus", "Queue"]
 
 
 class BaseModel:
-    """Base class for the data models."""
+    """Base class for all data models."""
 
-    _columns: Dict[str, Any] = field(default_factory=dict)
+    _columns: dict[str, Any] = field(default_factory=dict)
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} - {', '.join(f'{k}: {v}' for k, v in self._columns.items())}>"
@@ -54,12 +42,8 @@ class Info(BASE, BaseModel):
     key: Mapped[str] = mapped_column(Text, primary_key=True, unique=True)
     value: Mapped[str] = mapped_column(Text)
     notes: Mapped[str] = mapped_column(Text)
-    modify_time: Mapped[datetime.datetime] = mapped_column(
-        DateTime, default=datetime.datetime.now
-    )
-    create_time: Mapped[datetime.datetime] = mapped_column(
-        DateTime, default=datetime.datetime.now
-    )
+    modify_time: Mapped[datetime.datetime] = mapped_column(DateTime, default=datetime.datetime.now)
+    create_time: Mapped[datetime.datetime] = mapped_column(DateTime, default=datetime.datetime.now)
     display_order: Mapped[int] = mapped_column(Integer)
 
     def __post_init__(self) -> None:
@@ -232,18 +216,18 @@ class ProcessStatus(BASE, BaseModel):
 
 @dataclass
 class Queue(BASE, BaseModel):
-    """Model for the queue."""
+    """Model for the queue table."""
 
     __tablename__ = "queue"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    experiment_id: Mapped[int] = mapped_column(Integer)
+    experiment_id: Mapped[int] = mapped_column(Integer, ForeignKey("experiment.id"))
     data_path: Mapped[str] = mapped_column(Text)
     pvlog_path: Mapped[str] = mapped_column(Text)
-    create_doi: Mapped[bool] = mapped_column()
-    proposal_id: Mapped[int] = mapped_column(Integer)
+    create_doi: Mapped[bool] = mapped_column(String(1), default="N")
+    proposal_id: Mapped[int] = mapped_column(Integer, ForeignKey("proposal.id"))
     acknowledgments: Mapped[str] = mapped_column(Text)
-    process_status_id: Mapped[int] = mapped_column(Integer, ForeignKey("process_status.id"), nullable=False, default=2)
+    process_status_id: Mapped[int] = mapped_column(Integer, ForeignKey("process_status.id"), default=2)
 
     def __post_init__(self) -> None:
         self._columns = {
@@ -260,19 +244,19 @@ class Queue(BASE, BaseModel):
 
 @dataclass
 class DataPath(BASE, BaseModel):
-    """Model for the data paths."""
+    """Model for the data path table."""
 
     __tablename__ = "data_path"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    path_template: Mapped[str] = mapped_column(Text)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     station_id: Mapped[int] = mapped_column(Integer, ForeignKey("station.id"))
     technique_id: Mapped[int] = mapped_column(Integer, ForeignKey("technique.id"))
+    path_template: Mapped[str] = mapped_column(Text)
 
     def __post_init__(self) -> None:
         self._columns = {
             "id": self.id,
-            "path_template": self.path_template,
             "station_id": self.station_id,
             "technique_id": self.technique_id,
+            "path_template": self.path_template,
         }

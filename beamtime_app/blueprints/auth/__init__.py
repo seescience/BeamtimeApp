@@ -1,10 +1,10 @@
-#!/bin/bash
+#!/usr/bin/env python3
 # ----------------------------------------------------------------------------------
 # Project: BeamtimeApp
-# File: start_beamtime_app.sh
+# File: beamtime_app/blueprints/auth/__init__.py
 # ----------------------------------------------------------------------------------
-# Purpose: 
-# This script is used to start the BeamtimeApp web application.
+# Purpose:
+# This is the auth blueprints for the Beamtime application.
 # ----------------------------------------------------------------------------------
 # Author: Christofanis Skordas
 #
@@ -12,4 +12,6 @@
 # Copyright (C) 2025 NSF SEES, USA
 # ----------------------------------------------------------------------------------
 
-uv run BeamtimeApp.py & > /dev/null 2>&1
+from beamtime_app.blueprints.auth.routes import auth
+
+__all__ = ["auth"]

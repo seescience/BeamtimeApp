@@ -14,44 +14,64 @@
 # ----------------------------------------------------------------------------------
 
 import logging
+import os
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 from flask import Flask
+from flask_login import LoginManager
 
-from beamtime_app.config import Config, DatabaseConfig
+from beamtime_app.config import BaseConfig
+from beamtime_app.database import init_db
+from beamtime_app.services import get_user_by_id
 
-__all__ = ["create_flask_app", "database_config"]
-
-
-# Create the database config instance
-database_config = DatabaseConfig()
-
-# Create the logs directory for the application
-Path("logs").mkdir(exist_ok=True)
-
-# Setup Flask logging
-flask_logger = logging.getLogger("werkzeug")
-flask_logger.setLevel(logging.INFO)
-flask_handler = RotatingFileHandler("logs/flask.log", maxBytes=512 * 1024 * 1024, backupCount=1000000)
-flask_handler.setFormatter(logging.Formatter("%(asctime)s | %(levelname)s | %(message)s"))
-flask_logger.addHandler(flask_handler)
+__all__ = ["create_flask_app"]
 
 
-def create_flask_app(config_class=Config):
-    """Create a Flask app using the provided configuration class."""
+def create_flask_app() -> Flask:
+    """Create and configure Flask application."""
     # Create the Flask app
     app = Flask(__name__)
-    app.config.from_object(config_class)
+    app.config.from_object(BaseConfig)
 
-    # Set the Flask logger
-    app.logger = flask_logger
+    # Setup logging
+    if not app.debug and not app.testing:
+        # Create directory for Flask log file if needed
+        flask_log_path = Path(app.config["FLASK_LOG_FILE"])
+        flask_log_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Setup file handler
+        file_handler = RotatingFileHandler(app.config["FLASK_LOG_FILE"], maxBytes=10240000, backupCount=10)
+        file_handler.setFormatter(logging.Formatter("%(asctime)s | %(levelname)s | %(message)s"))
+        file_handler.setLevel(logging.INFO)
+        app.logger.addHandler(file_handler)
+
+        app.logger.setLevel(logging.INFO)
+        app.logger.info("BeamtimeApp startup")
+
+    # Initialize Flask Login
+    login_manager = LoginManager()
+    login_manager.init_app(app)
+    login_manager.login_view = "auth.login"
+    login_manager.login_message = "Please log in to access this page."
+    login_manager.login_message_category = "info"
+
+    @login_manager.user_loader
+    def load_user(user_id):
+        return get_user_by_id(user_id)
+
+    # Initialize database
+    init_db(app)
 
     # Import and register the routes
-    from beamtime_app.api.v1.routes import api_v1
-    from beamtime_app.routes import beamtime
+    from beamtime_app.blueprints import api_v1, auth, main
 
-    app.register_blueprint(beamtime)
+    app.register_blueprint(main)
+    app.register_blueprint(auth)
     app.register_blueprint(api_v1)
+    app.logger.info("Blueprints registered: main, auth, api_v1")
+
+    # Log startup info
+    app.logger.info("BeamtimeApp started")
 
     return app

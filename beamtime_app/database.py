@@ -15,27 +15,44 @@
 from contextlib import contextmanager
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import scoped_session, sessionmaker
 
-from beamtime_app import database_config
-
-
-__all__ = ["BASE", "session_scope", "DBException"]
+__all__ = ["BASE", "session_scope", "DBException", "init_db"]
 
 
-# Create the database engine and session
-ENGINE = create_engine(database_config.database_uri, pool_size=10, max_overflow=2, pool_timeout=30)
-SESSION = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=ENGINE))
+# Global variables for engine and session
+ENGINE = None
+SESSION = None
 
 # Create the base class for the database models
 BASE = declarative_base()
 
 
+def init_db(app) -> None:
+    """Initialize database with Flask app."""
+    global ENGINE, SESSION
+
+    # Create the database engine
+    ENGINE = create_engine(app.config["DATABASE_URI"], pool_size=10, max_overflow=2, pool_timeout=30)
+
+    # Create session
+    SESSION = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=ENGINE))
+
+    app.logger.info("Database initialized")
+
+
+def get_session() -> scoped_session:
+    """Get database session."""
+    if SESSION is None:
+        raise RuntimeError("Database not initialized. Call init_db() first.")
+    return SESSION
+
+
 @contextmanager
-def session_scope():
+def session_scope() -> scoped_session:
     """Provides a context manager to handle the database session."""
-    session = SESSION()
+    session = get_session()()
     try:
         yield session
         session.commit()

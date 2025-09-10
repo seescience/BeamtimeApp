@@ -12,21 +12,23 @@
         <link rel="apple-touch-icon" href="https://seescience.org/wp-content/uploads/2024/01/cropped-clogo_cropped-1-180x180.png" />
         <meta name="msapplication-TileImage" content="https://seescience.org/wp-content/uploads/2024/01/cropped-clogo_cropped-1-270x270.png" />
 
-        <!-- Google Fonts - Inter -->
+        <!-- Google Fonts - Inter (with preconnect for performance) -->
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
         <!-- Bootstrap CSS -->
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
         
-        <!-- Static CSS -->
-        <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+        <!-- Bootstrap Icons -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+        
+        <!-- Custom CSS -->
+        <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
 
         <title>SEES Beamtime Management</title>
     </head>
-    <body>
+    <body{% if page_class %} class="{{ page_class }}"{% endif %}>
         <div class="page-wrapper">
             <!-- Main content -->
             <div class="container-fluid content">
@@ -36,10 +38,14 @@
         </div>
 
         <!-- Javascript -->
-        <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
         <script src="https://code.jquery.com/jquery-3.7.1.slim.min.js" integrity="sha256-kmHvs0B+OpCW5GVHUNjv9rOmY0IvSIRcf7zGUDTDQM8=" crossorigin="anonymous"></script>
         <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js" integrity="sha384-0pUGZvbkm6XF6gxjEnlmuGrJXVbNuzT9qBBavbLwCsOGabYfZo0T0to5eqruptLy" crossorigin="anonymous"></script>
+        
+        <!-- Custom JavaScript -->
+        <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/login.js') }}"></script>
+        
         <script>
             // Theme switcher functionality
             document.addEventListener('DOMContentLoaded', () => {

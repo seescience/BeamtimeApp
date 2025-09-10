@@ -29,7 +29,7 @@ from beamtime_app.models import (
 )
 from beamtime_app.utils import format_experiment_data, to_dictionary
 
-__all__ = ["add_to_queue", "get_all_entries"]
+__all__ = ["add_to_queue", "get_all_entries", "get_experiments", "get_data_path"]
 
 
 def _select_all(db: Session, model: BaseModel) -> list[BaseModel]:
@@ -52,7 +52,7 @@ def get_all_entries(model: BaseModel) -> list[dict[str, Any]]:
 
 
 def get_experiments(
-    run: int | None = None, beamline: int | None = None, status: int | None = None
+    run: int | None = None, beamline: int | None = None, station: int | None = None, technique: int | None = None, status: int | None = None
 ) -> list[dict[str, any]]:
     """Gets experiments with status from queue table (if queued) or experiment table status (if not queued)."""
     experiments = []
@@ -100,9 +100,7 @@ def get_experiments(
                 )
                 .outerjoin(Queue, Experiment.id == Queue.experiment_id)
                 .outerjoin(QueuePS, Queue.process_status_id == QueuePS.id)
-                .outerjoin(
-                    ExperimentPS, Experiment.process_status_id == ExperimentPS.id
-                )
+                .outerjoin(ExperimentPS, Experiment.process_status_id == ExperimentPS.id)
                 .outerjoin(Spokesperson, Experiment.spokesperson_id == Spokesperson.id)
                 .outerjoin(
                     BeamlineContact,
@@ -129,26 +127,20 @@ def get_experiments(
                     "sees_doi": result.sees_doi,
                     "esaf_pdf_file": result.esaf_pdf_file,
                     # Person information
-                    "spokesperson_name": f"{result.spokesperson_first_name or ''} {result.spokesperson_last_name or ''}".strip()
-                    or None,
+                    "spokesperson_name": f"{result.spokesperson_first_name or ''} {result.spokesperson_last_name or ''}".strip() or None,
                     "spokesperson_email": result.spokesperson_email,
-                    "beamline_contact_name": f"{result.beamline_contact_first_name or ''} {result.beamline_contact_last_name or ''}".strip()
-                    or None,
+                    "beamline_contact_name": f"{result.beamline_contact_first_name or ''} {result.beamline_contact_last_name or ''}".strip() or None,
                     "beamline_contact_email": result.beamline_contact_email,
                     # Use queue status if queued, otherwise experiment status
-                    "process_status": result.queue_status_name
-                    if result.queue_id
-                    else result.exp_status_name,
-                    "process_status_id": result.queue_status_id
-                    if result.queue_id
-                    else result.exp_status_id,
+                    "process_status": result.queue_status_name if result.queue_id else result.exp_status_name,
+                    "process_status_id": result.queue_status_id if result.queue_id else result.exp_status_id,
                     "is_queued": bool(result.queue_id),
                 }
                 for result in results
             ]
 
         except DBException as e:
-            print(f"Error getting experiments: {e}")
+            pass  # Log to proper logger in production
 
     # Apply filters
     if beamline:
@@ -171,13 +163,7 @@ def add_to_queue(rows: list[dict[str, Any]]) -> dict[str, int]:
     # Convert "N/A" values to None and handle acknowledgments as a comma-separated string
     sanitized_rows = [
         {
-            key: (
-                None
-                if value == "N/A"
-                else ",".join(map(str, value))
-                if key == "acknowledgments" and isinstance(value, list)
-                else value
-            )
+            key: (None if value == "N/A" else ",".join(map(str, value)) if key == "acknowledgments" and isinstance(value, list) else value)
             for key, value in row.items()
         }
         for row in rows

@@ -13,22 +13,10 @@
 # ----------------------------------------------------------------------------------
 
 from flask import Blueprint, flash, jsonify, render_template, request
+from flask_login import login_required
 
-from beamtime_app.crud import (
-    add_to_queue,
-    get_all_entries,
-    get_data_path,
-    get_experiments,
-)
-from beamtime_app.models import (
-    Acknowledgment,
-    Beamline,
-    Info,
-    ProcessStatus,
-    Run,
-    Station,
-    Technique,
-)
+from beamtime_app.models import Acknowledgment, Beamline, Info, ProcessStatus, Run, Station, Technique
+from beamtime_app.crud import add_to_queue, get_all_entries, get_data_path, get_experiments
 from beamtime_app.utils import format_info_modification_time
 
 # Create a Blueprint for the beamtime routes
@@ -36,15 +24,22 @@ api_v1 = Blueprint("api_v1", __name__, url_prefix="/api/v1")
 
 
 @api_v1.route("/")
-def home():
+@login_required
+def home() -> str:
     selected_run = request.args.get("run", type=int)
     selected_beamline = request.args.get("beamline", type=int)
     selected_station = request.args.get("station", type=int)
     selected_technique = request.args.get("technique", type=int)
     selected_status = request.args.get("status", type=int)
+    
     experiments = get_experiments(
-        run=selected_run, beamline=selected_beamline, status=selected_status
+        run=selected_run, 
+        beamline=selected_beamline, 
+        station=selected_station, 
+        technique=selected_technique, 
+        status=selected_status
     )
+
     return render_template(
         "index.html",
         beamlines=get_all_entries(Beamline),
@@ -64,6 +59,7 @@ def home():
 
 
 @api_v1.route("/get_acknowledgments", methods=["GET"])
+@login_required
 def get_acknowledgments() -> str:
     """API endpoint to fetch acknowledgment options."""
     acknowledgments = get_all_entries(Acknowledgment)
@@ -71,7 +67,8 @@ def get_acknowledgments() -> str:
 
 
 @api_v1.route("/get_data_path", methods=["GET"])
-def get_data_path_api():
+@login_required
+def get_data_path_api() -> str:
     """API endpoint to fetch data path template."""
     station_id = request.args.get("station_id", type=int)
     technique_id = request.args.get("technique_id", type=int)
@@ -84,6 +81,7 @@ def get_data_path_api():
 
 
 @api_v1.route("/create_update_queue", methods=["POST"])
+@login_required
 def create_update_queue() -> str:
     """Handles adding rows to the queue table."""
     # Get the rows from the request data
@@ -102,11 +100,7 @@ def create_update_queue() -> str:
         }
         for row in rows
         # Ensure that at least one of the fields is not None or empty, except DOI
-        if any(
-            value not in [None, "N/A", False, ""]
-            for key, value in row.items()
-            if key != "doi"
-        )
+        if any(value not in [None, "N/A", False, ""] for key, value in row.items() if key != "doi")
     ]
 
     # Add the valid rows to the queue
@@ -125,10 +119,9 @@ def create_update_queue() -> str:
 
 
 @api_v1.route("/validate_data_path", methods=["POST"])
-def validate_data_path_api():
+@login_required
+def validate_data_path_api() -> str:
     """API endpoint to validate if a data path is valid."""
-    from flask import jsonify, request
-
     from beamtime_app.utils import validate_and_normalize_datapath
 
     data = request.get_json()
