@@ -85,12 +85,18 @@ def login() -> str | tuple:
             success, user = AuthService.authenticate_user(username, password)
 
             if success and user:
+                # Store user data in session immediately
+                session["user_data"] = user.to_session_dict()
+
                 # Log in user with Flask-Login
                 login_user(user, remember=False)
 
                 # Make session permanent if configured
                 if current_app.config.get("SESSION_PERMANENT", True):
                     session.permanent = True
+
+                # Force session to be saved immediately to prevent race conditions
+                session.modified = True
 
                 logger.info(f"Successful login for user: {username}")
 

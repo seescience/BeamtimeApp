@@ -17,15 +17,13 @@ import ssl
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
-from flask import current_app
+from flask import current_app, session
 from flask_login import UserMixin
 from ldap3 import ALL, MODIFY_REPLACE, Connection, Server, Tls
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Global user storage for Flask-Login
-_user_cache: Dict[str, "User"] = {}
 
 # Global LDAP auth instance
 _ldap_auth: Optional["LDAPAuth"] = None
@@ -56,6 +54,35 @@ class User(UserMixin):
 
     def __repr__(self) -> str:
         return f"<User {self.username} ({self.full_name})>"
+
+    def to_session_dict(self) -> dict:
+        """Convert user to session-safe dictionary."""
+        return {
+            "username": self.username,
+            "first_name": self.first_name,
+            "last_name": self.last_name,
+            "display_name": self.display_name,
+            "dn": self.dn,
+            "groups": self.groups[:10],
+            "is_authenticated": self.is_authenticated,
+            "is_active": self.is_active,
+            "is_anonymous": self.is_anonymous,
+        }
+
+    @classmethod
+    def from_session_dict(cls, data: dict) -> "User":
+        """Create user from session dictionary."""
+        return cls(
+            username=data["username"],
+            first_name=data["first_name"],
+            last_name=data["last_name"],
+            display_name=data["display_name"],
+            dn=data["dn"],
+            groups=data.get("groups", []),
+            is_authenticated=data.get("is_authenticated", True),
+            is_active=data.get("is_active", True),
+            is_anonymous=data.get("is_anonymous", False),
+        )
 
 
 class LDAPAuth:
@@ -301,7 +328,7 @@ class AuthService:
             success, user = ldap_auth.authenticate_user(username, password)
 
             if success and user:
-                # Cache the user
+                # Cache the user in session
                 cache_user(user)
                 logger.info(f"User authenticated successfully: {username}")
             else:
@@ -350,15 +377,26 @@ class AuthService:
 
 
 def get_user_by_id(user_id: str) -> Optional[User]:
-    """User loader function for Flask-Login."""
-    return _user_cache.get(user_id)
+    """User loader function for Flask-Login - uses Flask session."""
+    # Check if user data is in session
+    user_data = session.get("user_data")
+    if user_data and user_data.get("username") == user_id:
+        try:
+            return User.from_session_dict(user_data)
+        except Exception as e:
+            logger.warning(f"Failed to load user from session: {e}")
+            # Clear corrupted session data
+            session.pop("user_data", None)
+
+    return None
 
 
 def cache_user(user: User) -> None:
-    """Cache user in memory."""
-    _user_cache[user.get_id()] = user
+    """Store user in Flask session."""
+    session["user_data"] = user.to_session_dict()
+    session.permanent = True
 
 
 def clear_user_cache(user_id: str) -> None:
-    """Remove user from cache."""
-    _user_cache.pop(user_id, None)
+    """Remove user from Flask session."""
+    session.pop("user_data", None)

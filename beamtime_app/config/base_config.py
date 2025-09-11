@@ -33,6 +33,10 @@ class BaseConfig:
     PERMANENT_SESSION_LIFETIME_HOURS = int(os.getenv("PERMANENT_SESSION_LIFETIME"))
     PERMANENT_SESSION_LIFETIME = timedelta(hours=PERMANENT_SESSION_LIFETIME_HOURS)
     SESSION_PERMANENT = os.getenv("SESSION_PERMANENT").lower() == "true"
+    SESSION_COOKIE_HTTPONLY = os.getenv("SESSION_COOKIE_HTTPONLY").lower() == "true"
+    SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE").lower() == "true"
+    SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE")
+    SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME")
 
     # Database configuration
     DATABASE_URI = os.getenv("DATABASE_URI")
