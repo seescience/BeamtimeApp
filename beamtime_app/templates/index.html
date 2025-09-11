@@ -179,7 +179,17 @@
                             </div>
                             <div class="col-md-6">
                                 <label for="pvLoggerPath" class="form-label">PVLogger Path</label>
-                                <input type="text" class="form-control" id="pvLoggerPath" name="pvLoggerPath">
+                                <div class="input-group">
+                                    <input type="file" class="form-control" id="pvLoggerPath" name="pvLoggerPath" accept=".yaml,.yml" style="display: none;">
+                                    <input type="text" class="form-control" id="pvLoggerPathDisplay" placeholder="No file selected" readonly>
+                                    <button class="btn btn-outline-danger" type="button" id="clearFileBtn" title="Clear selection" style="display: none;">
+                                        <i class="bi bi-x"></i>
+                                    </button>
+                                    <button class="btn btn-outline-secondary" type="button" id="selectFileBtn" title="Select YAML file">
+                                        <i class="bi bi-folder2-open"></i>
+                                    </button>
+                                </div>
+                                <input type="hidden" id="pvLoggerPathValue" name="pvLoggerPathValue">
                             </div>
                         </div>
                         

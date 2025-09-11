@@ -80,6 +80,11 @@
 
     /* Close button invert */
     --close-btn-invert: 0;
+
+    /* File picker styles */
+    --file-picker-bg: var(--bg-primary);
+    --file-picker-border: var(--border-color);
+    --file-picker-text: var(--text-secondary);
 }
 
 /* Dark theme */
@@ -1572,5 +1577,57 @@ input[type="checkbox"]:checked::after {
         max-width: 320px;
         margin: 0 var(--spacing-sm);
     }
+}
+
+/* File Picker Styles */
+#pvLoggerPathDisplay {
+    cursor: pointer;
+    background-color: var(--file-picker-bg);
+    color: var(--file-picker-text);
+}
+
+#pvLoggerPathDisplay:focus {
+    background-color: var(--focus-bg);
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+#selectFileBtn {
+    border-left: 1px solid var(--file-picker-border);
+    transition: all var(--transition-speed);
+}
+
+#selectFileBtn:hover {
+    background-color: var(--hover-bg);
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+}
+
+#selectFileBtn:focus {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+#clearFileBtn {
+    border-left: 1px solid var(--file-picker-border);
+    border-right: 1px solid var(--file-picker-border);
+    transition: all var(--transition-speed);
+}
+
+#clearFileBtn:hover {
+    background-color: var(--danger-color);
+    border-color: var(--danger-color);
+    color: white;
+}
+
+#clearFileBtn:focus {
+    border-color: var(--danger-color);
+    box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.25);
+}
+
+/* File input styling when visible (fallback) */
+#pvLoggerPath:focus {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 2px var(--focus-ring);
 }
 

@@ -16,7 +16,7 @@ import datetime
 from dataclasses import dataclass, field
 from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from beamtime_app.database import BASE
@@ -224,8 +224,8 @@ class Queue(BASE, BaseModel):
     experiment_id: Mapped[int] = mapped_column(Integer, ForeignKey("experiment.id"))
     data_path: Mapped[str] = mapped_column(Text)
     pvlog_path: Mapped[str] = mapped_column(Text)
-    create_doi: Mapped[bool] = mapped_column(String(1), default="N")
-    proposal_id: Mapped[int] = mapped_column(Integer, ForeignKey("proposal.id"))
+    create_doi: Mapped[bool] = mapped_column(Boolean)
+    proposal_id: Mapped[int] = mapped_column(Integer)
     acknowledgments: Mapped[str] = mapped_column(Text)
     process_status_id: Mapped[int] = mapped_column(Integer, ForeignKey("process_status.id"), default=2)
 

@@ -18,6 +18,132 @@ let experimentModal = null;
 let experimentViewModal = null;
 let currentEditingExperiment = null;
 
+// Initialize PVLogger file picker
+function initializePVLoggerFilePicker() {
+    const fileInput = document.getElementById('pvLoggerPath');
+    const displayInput = document.getElementById('pvLoggerPathDisplay');
+    const selectBtn = document.getElementById('selectFileBtn');
+    const clearBtn = document.getElementById('clearFileBtn');
+    const hiddenInput = document.getElementById('pvLoggerPathValue');
+    
+    if (!fileInput || !displayInput || !selectBtn || !clearBtn || !hiddenInput) return;
+    
+    // Handle button click to open file dialog
+    selectBtn.addEventListener('click', () => {
+        fileInput.click();
+    });
+    
+    // Handle clear button click
+    clearBtn.addEventListener('click', () => {
+        clearFileSelection();
+    });
+    
+    // Handle file selection
+    fileInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            // Validate file extension
+            const fileName = file.name.toLowerCase();
+            if (!fileName.endsWith('.yaml') && !fileName.endsWith('.yml')) {
+                showNotification('error', 'Please select a YAML file (.yaml or .yml)');
+                fileInput.value = '';
+                displayInput.value = '';
+                hiddenInput.value = '';
+                return;
+            }
+            
+            // Upload the file automatically
+            uploadPVLoggerFile(file);
+        } else {
+            displayInput.value = '';
+            hiddenInput.value = '';
+        }
+    });
+}
+
+// Upload PVLogger file
+function uploadPVLoggerFile(file) {
+    const displayInput = document.getElementById('pvLoggerPathDisplay');
+    const clearBtn = document.getElementById('clearFileBtn');
+    const hiddenInput = document.getElementById('pvLoggerPathValue');
+    const selectBtn = document.getElementById('selectFileBtn');
+    const esafNumber = document.getElementById('experimentNumber').value;
+    
+    if (!esafNumber) {
+        showNotification('error', 'ESAF number is required for file upload');
+        clearFileSelection();
+        return;
+    }
+    
+    // Show uploading state
+    displayInput.value = 'Uploading...';
+    selectBtn.disabled = true;
+    
+    // Create FormData for file upload
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('esaf_number', esafNumber);
+    
+    // Upload the file
+    fetch('/api/v1/upload_pvlogger_file', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            // Display the uploaded file path
+            displayInput.value = result.filename;
+            hiddenInput.value = result.path;
+            clearBtn.style.display = 'block';
+            
+            showNotification('success', result.message);
+            console.log('File uploaded successfully:', result.path);
+        } else {
+            showNotification('error', result.error || 'Upload failed');
+            clearFileSelection();
+        }
+    })
+    .catch(error => {
+        console.error('Upload error:', error);
+        showNotification('error', 'Upload failed. Please try again.');
+        clearFileSelection();
+    })
+    .finally(() => {
+        selectBtn.disabled = false;
+    });
+}
+
+// Clear file selection
+function clearFileSelection() {
+    const fileInput = document.getElementById('pvLoggerPath');
+    const displayInput = document.getElementById('pvLoggerPathDisplay');
+    const clearBtn = document.getElementById('clearFileBtn');
+    const hiddenInput = document.getElementById('pvLoggerPathValue');
+    const selectBtn = document.getElementById('selectFileBtn');
+    
+    if (fileInput) fileInput.value = '';
+    if (displayInput) displayInput.value = '';
+    if (hiddenInput) hiddenInput.value = '';
+    if (clearBtn) clearBtn.style.display = 'none';
+    if (selectBtn) selectBtn.disabled = false;
+    
+    console.log('PVLogger file selection cleared');
+}
+
+// Reset PVLogger file picker
+function resetPVLoggerFilePicker() {
+    const fileInput = document.getElementById('pvLoggerPath');
+    const displayInput = document.getElementById('pvLoggerPathDisplay');
+    const clearBtn = document.getElementById('clearFileBtn');
+    const hiddenInput = document.getElementById('pvLoggerPathValue');
+    
+    if (fileInput) fileInput.value = '';
+    if (displayInput) displayInput.value = '';
+    if (hiddenInput) hiddenInput.value = '';
+    if (clearBtn) clearBtn.style.display = 'none';
+}
+
 // Initialize the experiment modals
 function initializeExperimentModal() {
     // Edit/queue modal
@@ -41,6 +167,9 @@ function initializeExperimentModal() {
     // Initialize path validation button
     const validateBtn = document.getElementById('validatePathBtn');
     if (validateBtn) validateBtn.addEventListener('click', validateCurrentPath);
+    
+    // Initialize file picker for PVLogger Path
+    initializePVLoggerFilePicker();
     
     // Real-time path validation
     const dataPathEl = document.getElementById('dataPath');
@@ -146,7 +275,7 @@ function loadExperimentData(experimentId, mode = 'view') {
     }
     
     // Reset acknowledgments and PVLogger path
-    document.getElementById('pvLoggerPath').value = '';
+    resetPVLoggerFilePicker();
     document.querySelectorAll('.acknowledgment-checkbox').forEach(cb => cb.checked = false);
     updateSelectedAcknowledgments();
 }
@@ -207,7 +336,7 @@ function proceedWithAddToQueue(formData, addToQueueBtn, originalButtonContent) {
         experiment_number: formData.get('experimentNumber'),
         title: formData.get('title'),
         data_path: formData.get('dataPath') || null,
-        pvlog_path: formData.get('pvLoggerPath') || null,
+        pvlog_path: formData.get('pvLoggerPathValue') || null,
         doi: formData.get('createDoi') === 'on',
         proposal_number: formData.get('proposalNumber') || null,
         acknowledgments: selectedAcks

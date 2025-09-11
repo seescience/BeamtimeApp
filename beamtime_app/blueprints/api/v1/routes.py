@@ -12,11 +12,14 @@
 # Copyright (C) 2025 NSF SEES, USA
 # ----------------------------------------------------------------------------------
 
+import os
+
 from flask import Blueprint, flash, jsonify, render_template, request
 from flask_login import login_required
+from werkzeug.utils import secure_filename
 
-from beamtime_app.models import Acknowledgment, Beamline, Info, ProcessStatus, Run, Station, Technique
 from beamtime_app.crud import add_to_queue, get_all_entries, get_data_path, get_experiments
+from beamtime_app.models import Acknowledgment, Beamline, Info, ProcessStatus, Run, Station, Technique
 from beamtime_app.utils import format_info_modification_time
 
 # Create a Blueprint for the beamtime routes
@@ -31,14 +34,8 @@ def home() -> str:
     selected_station = request.args.get("station", type=int)
     selected_technique = request.args.get("technique", type=int)
     selected_status = request.args.get("status", type=int)
-    
-    experiments = get_experiments(
-        run=selected_run, 
-        beamline=selected_beamline, 
-        station=selected_station, 
-        technique=selected_technique, 
-        status=selected_status
-    )
+
+    experiments = get_experiments(run=selected_run, beamline=selected_beamline, station=selected_station, technique=selected_technique, status=selected_status)
 
     return render_template(
         "index.html",
@@ -144,3 +141,54 @@ def validate_data_path_api() -> str:
         )
     except Exception as e:
         return jsonify({"error": f"Error validating path: {str(e)}"}), 500
+
+
+@api_v1.route("/upload_pvlogger_file", methods=["POST"])
+@login_required
+def upload_pvlogger_file() -> str:
+    """API endpoint to upload and rename PVLogger YAML files."""
+    # Check if file was uploaded
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"error": "No file selected"}), 400
+
+    # Get ESAF number from form data
+    esaf_number = request.form.get("esaf_number")
+    if not esaf_number:
+        return jsonify({"error": "ESAF number is required"}), 400
+
+    # Validate file extension
+    filename = file.filename.lower()
+    if not (filename.endswith(".yaml") or filename.endswith(".yml")):
+        return jsonify({"error": "Only YAML files are allowed"}), 400
+
+    try:
+        # Get uploads directory from info table
+        info_entries = get_all_entries(Info)
+        uploads_dir = None
+        for entry in info_entries:
+            if entry.get("key") == "uploads_directory":
+                uploads_dir = entry.get("value")
+                break
+
+        if not uploads_dir:
+            return jsonify({"error": "Uploads directory not configured"}), 500
+
+        # Create uploads directory if it doesn't exist
+        os.makedirs(uploads_dir, exist_ok=True)
+
+        # Create new filename: pvlog_<esaf_number>.yaml
+        file_extension = ".yaml" if filename.endswith(".yaml") else ".yml"
+        new_filename = f"pvlog_{esaf_number}{file_extension}"
+        file_path = os.path.join(uploads_dir, new_filename)
+
+        # Save the file
+        file.save(file_path)
+
+        return jsonify({"success": True, "filename": new_filename, "path": file_path, "message": f"File uploaded and renamed to {new_filename}"})
+
+    except Exception as e:
+        return jsonify({"error": f"Error uploading file: {str(e)}"}), 500
