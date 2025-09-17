@@ -16,10 +16,9 @@ import os
 
 from flask import Blueprint, flash, jsonify, render_template, request
 from flask_login import login_required
-from werkzeug.utils import secure_filename
 
-from beamtime_app.crud import add_to_queue, get_all_entries, get_data_path, get_experiments
-from beamtime_app.models import Acknowledgment, Beamline, Info, ProcessStatus, Run, Station, Technique
+from beamtime_app.crud import add_to_queue, get_all_entries, get_experiments
+from beamtime_app.models import Acknowledgment, APSBeamline, Info, ProcessStatus, Run, Technique
 from beamtime_app.utils import format_info_modification_time
 
 # Create a Blueprint for the beamtime routes
@@ -31,16 +30,14 @@ api_v1 = Blueprint("api_v1", __name__, url_prefix="/api/v1")
 def home() -> str:
     selected_run = request.args.get("run", type=int)
     selected_beamline = request.args.get("beamline", type=int)
-    selected_station = request.args.get("station", type=int)
     selected_technique = request.args.get("technique", type=int)
     selected_status = request.args.get("status", type=int)
 
-    experiments = get_experiments(run=selected_run, beamline=selected_beamline, station=selected_station, technique=selected_technique, status=selected_status)
+    experiments = get_experiments(run=selected_run, beamline=selected_beamline, technique=selected_technique, status=selected_status)
 
     return render_template(
         "index.html",
-        beamlines=get_all_entries(Beamline),
-        stations=get_all_entries(Station),
+        beamlines=get_all_entries(APSBeamline),
         techniques=get_all_entries(Technique),
         runs=get_all_entries(Run),
         process_statuses=get_all_entries(ProcessStatus),
@@ -49,7 +46,6 @@ def home() -> str:
         last_modified=format_info_modification_time(get_all_entries(Info)),
         selected_run=selected_run,
         selected_beamline=selected_beamline,
-        selected_station=selected_station,
         selected_technique=selected_technique,
         selected_status=selected_status,
     )
@@ -61,20 +57,6 @@ def get_acknowledgments() -> str:
     """API endpoint to fetch acknowledgment options."""
     acknowledgments = get_all_entries(Acknowledgment)
     return jsonify(acknowledgments)
-
-
-@api_v1.route("/get_data_path", methods=["GET"])
-@login_required
-def get_data_path_api() -> str:
-    """API endpoint to fetch data path template."""
-    station_id = request.args.get("station_id", type=int)
-    technique_id = request.args.get("technique_id", type=int)
-
-    if not station_id or not technique_id:
-        return "", 400
-
-    template = get_data_path(station_id, technique_id)
-    return template
 
 
 @api_v1.route("/create_update_queue", methods=["POST"])
@@ -90,10 +72,9 @@ def create_update_queue() -> str:
             "experiment_id": row.get("experiment_number") or None,
             "data_path": row.get("data_path") or None,
             "pvlog_path": row.get("pvlog_path") or None,
-            "create_doi": row.get("doi") or None,
-            "proposal_id": row.get("proposal_number") or None,
+            "create_doi": row.get("doi") or False,
+            "draft_doi": row.get("draft_doi") or False,
             "acknowledgments": row.get("acknowledgments") or [],
-            # process_status_id will use the default value of 2 from the model
         }
         for row in rows
         # Ensure that at least one of the fields is not None or empty, except DOI

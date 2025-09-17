@@ -1335,8 +1335,42 @@ input[type="checkbox"]:checked::after {
     padding-right: var(--spacing-lg);
 }
 
-/* Fix DOI checkbox - remove Bootstrap styling conflicts */
-#createDoi {
+/* Draft DOI form-check styling to match acknowledgments */
+.form-check:has(#draftDoi) {
+    padding: var(--spacing-sm) var(--spacing-lg);
+    margin-bottom: var(--spacing-xs);
+    border-radius: 0.25rem;
+    transition: background-color var(--transition-speed);
+    position: relative;
+}
+
+.form-check:has(#draftDoi):hover {
+    background-color: var(--hover-bg);
+}
+
+.form-check:has(#draftDoi) .form-check-label {
+    color: var(--text-primary) !important;
+    cursor: pointer;
+    margin-left: var(--checkbox-label-spacing);
+    display: inline-block;
+}
+
+.form-check:has(#draftDoi) .form-check-input {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    margin: 0;
+}
+
+/* Make entire draft DOI column clickable */
+.form-check:has(#draftDoi) .form-check-label {
+    width: 100%;
+    padding-right: var(--spacing-lg);
+}
+
+/* Fix DOI checkboxes - remove Bootstrap styling conflicts */
+#createDoi, #draftDoi {
     background-image: none !important;
 }
 
@@ -1629,5 +1663,14 @@ input[type="checkbox"]:checked::after {
 #pvLoggerPath:focus {
     border-color: var(--accent-primary);
     box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+/* Data path template dropdown */
+#dataPathTemplates {
+    display: none;
+    width: 100%;
+    z-index: 1000;
+    max-height: 200px;
+    overflow-y: auto;
 }
 

@@ -13,23 +13,24 @@
 
 from typing import Any
 
-from sqlalchemy import insert
+from sqlalchemy import insert, update
 from sqlalchemy.future import select
 from sqlalchemy.orm import Session, aliased
 
 from beamtime_app.database import DBException, session_scope
 from beamtime_app.models import (
+    APSBeamline,
     BaseModel,
-    Beamline,
-    DataPath,
     Experiment,
     Person,
     ProcessStatus,
+    ProcessStatusEnum,
     Queue,
+    Technique,
 )
 from beamtime_app.utils import format_experiment_data, to_dictionary
 
-__all__ = ["add_to_queue", "get_all_entries", "get_experiments", "get_data_path"]
+__all__ = ["add_to_queue", "get_all_entries", "get_experiments"]
 
 
 def _select_all(db: Session, model: BaseModel) -> list[BaseModel]:
@@ -56,17 +57,21 @@ def get_experiments(
 ) -> list[dict[str, any]]:
     """Gets experiments with status from queue table (if queued) or experiment table status (if not queued)."""
     experiments = []
+    technique_beamline_id = None
 
     with session_scope() as session:
         try:
-            # Join Experiment with Queue and ProcessStatus
-            QueuePS = aliased(ProcessStatus)
+            # If technique is specified, get its beamline_id first
+            if technique:
+                technique_beamline_id = session.execute(select(Technique.beamline_id).where(Technique.id == technique)).scalar_one_or_none()
+            
+            # Join Experiment with ProcessStatus
             ExperimentPS = aliased(ProcessStatus)
 
             # Aliases for different person roles
             Spokesperson = aliased(Person)
             BeamlineContact = aliased(Person)
-            BeamlineInfo = aliased(Beamline)
+            BeamlineInfo = aliased(APSBeamline)
 
             query = (
                 session.query(
@@ -92,14 +97,11 @@ def get_experiments(
                     # Beamline information
                     BeamlineInfo.name.label("beamline_name"),
                     # Status information
-                    QueuePS.name.label("queue_status_name"),
-                    QueuePS.id.label("queue_status_id"),
                     ExperimentPS.name.label("exp_status_name"),
                     ExperimentPS.id.label("exp_status_id"),
                     Queue.id.label("queue_id"),
                 )
                 .outerjoin(Queue, Experiment.id == Queue.experiment_id)
-                .outerjoin(QueuePS, Queue.process_status_id == QueuePS.id)
                 .outerjoin(ExperimentPS, Experiment.process_status_id == ExperimentPS.id)
                 .outerjoin(Spokesperson, Experiment.spokesperson_id == Spokesperson.id)
                 .outerjoin(
@@ -131,20 +133,23 @@ def get_experiments(
                     "spokesperson_email": result.spokesperson_email,
                     "beamline_contact_name": f"{result.beamline_contact_first_name or ''} {result.beamline_contact_last_name or ''}".strip() or None,
                     "beamline_contact_email": result.beamline_contact_email,
-                    # Use queue status if queued, otherwise experiment status
-                    "process_status": result.queue_status_name if result.queue_id else result.exp_status_name,
-                    "process_status_id": result.queue_status_id if result.queue_id else result.exp_status_id,
+                    # Experiment status information
+                    "process_status": result.exp_status_name,
+                    "process_status_id": result.exp_status_id,
                     "is_queued": bool(result.queue_id),
                 }
                 for result in results
             ]
 
         except DBException as e:
-            pass  # Log to proper logger in production
+            print(f"Database error: {e}")
 
     # Apply filters
     if beamline:
         experiments = [exp for exp in experiments if exp["beamline_id"] == beamline]
+    if technique and technique_beamline_id:
+        # When technique is selected, filter experiments by the technique's beamline_id
+        experiments = [exp for exp in experiments if exp["beamline_id"] == technique_beamline_id]
     if run:
         experiments = [exp for exp in experiments if exp["run_id"] == run]
     if status:
@@ -156,7 +161,7 @@ def get_experiments(
 
 
 def add_to_queue(rows: list[dict[str, Any]]) -> dict[str, int]:
-    """Adds multiple rows to the queue table."""
+    """Adds multiple rows to the queue table and updates experiment status to pending."""
     success_count = 0
     failure_count = 0
 
@@ -171,32 +176,28 @@ def add_to_queue(rows: list[dict[str, Any]]) -> dict[str, int]:
 
     with session_scope() as session:
         try:
+            # First, update the experiment status for each experiment being queued
+            for row in sanitized_rows:
+                experiment_id = row.get("experiment_id")
+                if experiment_id:
+                    # Get the current process_status_id first
+                    current_experiment = session.execute(select(Experiment.process_status_id).where(Experiment.id == experiment_id)).scalar_one_or_none()
+
+                    if current_experiment is not None:
+                        # Update experiment: store current status in old_process_status_id and set status to pending
+                        session.execute(
+                            update(Experiment)
+                            .where(Experiment.id == experiment_id)
+                            .values(old_process_status_id=current_experiment, process_status_id=ProcessStatusEnum.PENDING)
+                        )
+
+            # Then insert the rows into the queue
             session.execute(insert(Queue), sanitized_rows)
             session.commit()
             success_count = len(sanitized_rows)
         except Exception as e:
             print(f"Failed to add rows to queue: {e}")
+            session.rollback()
             failure_count = len(sanitized_rows)
 
     return {"success": success_count, "failure": failure_count}
-
-
-def get_data_path(station_id: int, technique_id: int) -> str:
-    """Returns data path template string for a given station and technique."""
-    with session_scope() as session:
-        try:
-            # Select the data path template for the given station id and technique id
-            result = session.execute(
-                select(DataPath.path_template).where(
-                    DataPath.station_id == station_id,
-                    DataPath.technique_id == technique_id,
-                )
-            )
-
-            # Get the first result as a scalar value
-            path_template = result.scalar_one_or_none()
-            return path_template or ""
-
-        except DBException as e:
-            print(f"Error retrieving data path: {e}")
-            return ""

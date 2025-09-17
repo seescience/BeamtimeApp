@@ -12,11 +12,260 @@
  * ---------------------------------------------------------------------------------- */
 
 let acknowledgmentOptions = [];
-let dataPathTemplate = '';
 let currentSortState = [];
 let experimentModal = null;
 let experimentViewModal = null;
 let currentEditingExperiment = null;
+
+// Initialize data path template dropdown
+function initializeDataPathTemplates() {
+    const dropdown = document.getElementById('dataPathTemplates');
+    const dropdownBtn = document.getElementById('dataPathDropdownBtn');
+    
+    if (!dropdown || !dropdownBtn) return;
+    
+    // Toggle dropdown visibility
+    dropdownBtn.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const isVisible = dropdown.style.display === 'block';
+        dropdown.style.display = isVisible ? 'none' : 'block';
+    });
+    
+    // Handle dropdown item clicks
+    dropdown.addEventListener('click', (event) => {
+        if (event.target.classList.contains('dropdown-item')) {
+            event.preventDefault();
+            
+            const template = event.target.getAttribute('data-template');
+            
+            if (template) {
+                const populatedPath = populateDataPathTemplate(template);
+                document.getElementById('dataPath').value = populatedPath;
+                
+                // Hide dropdown
+                dropdown.style.display = 'none';
+                
+                // Trigger validation
+                debounceValidation();
+            }
+        }
+    });
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (event) => {
+        if (!dropdown.contains(event.target) && !dropdownBtn.contains(event.target)) {
+            dropdown.style.display = 'none';
+        }
+    });
+}
+
+// Populate dropdown with resolved paths for the current experiment
+function populateDataPathDropdown(experimentId) {
+    const dropdown = document.getElementById('dataPathTemplates');
+    if (!dropdown) return;
+    
+    // Get experiment data
+    let year = new Date().getFullYear();
+    let runNumber = '';
+    let userLastName = 'user';
+    
+    if (experimentId) {
+        const row = document.querySelector(`tr[data-experiment-id="${experimentId}"]`);
+        if (row) {
+            const experimentDataStr = row.getAttribute('data-experiment-data');
+            if (experimentDataStr) {
+                try {
+                    const experiment = JSON.parse(experimentDataStr);
+                    
+                    if (experiment.start_date) {
+                        year = new Date(experiment.start_date).getFullYear();
+                    }
+                    
+                    if (experiment.run_id) {
+                        runNumber = experiment.run_id;
+                    }
+                    
+                    if (experiment.spokesperson_name && experiment.spokesperson_name !== 'N/A') {
+                        const nameParts = experiment.spokesperson_name.split(' ');
+                        if (nameParts.length > 1) {
+                            userLastName = nameParts[nameParts.length - 1].toLowerCase();
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Could not parse experiment data:', error);
+                }
+            }
+        }
+    }
+    
+    // Check if a technique is selected in the filters
+    const techniqueSelect = document.getElementById('techniqueSelect');
+    const selectedTechniqueId = techniqueSelect ? techniqueSelect.value : null;
+    
+    // Get all technique templates and populate them
+    const templates = [];
+    const originalItems = dropdown.querySelectorAll('[data-template]');
+    
+    originalItems.forEach(item => {
+        const template = item.getAttribute('data-template');
+        const techniqueUser = item.getAttribute('data-user');
+        
+        if (template) {
+            // If a technique is selected in filters, only show paths for that technique's user
+            if (selectedTechniqueId) {
+                // Find the selected technique's user_name
+                const selectedTechniqueOption = techniqueSelect.querySelector(`option[value="${selectedTechniqueId}"]`);
+                if (selectedTechniqueOption) {
+                    const selectedTechniqueUser = selectedTechniqueOption.getAttribute('data-user');
+                    // Skip this template if it doesn't match the selected technique's user
+                    if (techniqueUser && selectedTechniqueUser && techniqueUser !== selectedTechniqueUser) {
+                        return;
+                    }
+                }
+            }
+            
+            const resolvedPath = template
+                .replace(/{year}/g, year)
+                .replace(/{run}/g, runNumber)
+                .replace(/{user}/g, userLastName);
+            
+            templates.push({ template, resolvedPath });
+        }
+    });
+    
+    // Clear and rebuild dropdown with resolved paths
+    dropdown.innerHTML = '';
+    templates.forEach(({ template, resolvedPath }) => {
+        const item = document.createElement('a');
+        item.className = 'dropdown-item';
+        item.href = '#';
+        item.setAttribute('data-template', template);
+        item.textContent = resolvedPath;
+        dropdown.appendChild(item);
+    });
+}
+
+// Get the base_dir path for the currently selected technique in filters
+function getSelectedTechniqueBasePath() {
+    const techniqueSelect = document.getElementById('techniqueSelect');
+    if (!techniqueSelect || !techniqueSelect.value) {
+        return null; // No technique selected
+    }
+    
+    const selectedTechniqueId = techniqueSelect.value;
+    const selectedOption = techniqueSelect.querySelector(`option[value="${selectedTechniqueId}"]`);
+    const selectedTechniqueUser = selectedOption ? selectedOption.getAttribute('data-user') : null;
+    
+    if (!selectedTechniqueUser) {
+        return null; // No user data available
+    }
+    
+    // Find the base_dir template for this technique's user from the dropdown
+    const dropdown = document.getElementById('dataPathTemplates');
+    if (!dropdown) return null;
+    
+    const templateItems = dropdown.querySelectorAll('[data-template][data-user]');
+    for (const item of templateItems) {
+        const techniqueUser = item.getAttribute('data-user');
+        const template = item.getAttribute('data-template');
+        
+        if (techniqueUser === selectedTechniqueUser && template) {
+            return template;
+        }
+    }
+    
+    return null; // No matching template found
+}
+
+// Populate data path template with current values
+function populateDataPathTemplate(template) {
+    let year = new Date().getFullYear();
+    let runNumber = '';
+    let userLastName = 'user';
+    
+    // Get all data from the selected experiment
+    if (currentEditingExperiment) {
+        const row = document.querySelector(`tr[data-experiment-id="${currentEditingExperiment}"]`);
+        if (row) {
+            // Get experiment data from the data attribute
+            const experimentDataStr = row.getAttribute('data-experiment-data');
+            if (experimentDataStr) {
+                try {
+                    const experiment = JSON.parse(experimentDataStr);
+                    
+                    // Extract year from start_date or end_date
+                    if (experiment.start_date) {
+                        year = new Date(experiment.start_date).getFullYear();
+                    }
+                    
+                    // Extract run number from run_id (assuming format like "2025-1")
+                    if (experiment.run_id) {
+                        // You might need to get the actual run name from the runs data
+                        // For now, using run_id directly
+                        runNumber = experiment.run_id;
+                    }
+                    
+                    // Get spokesperson last name
+                    if (experiment.spokesperson_name && experiment.spokesperson_name !== 'N/A') {
+                        const nameParts = experiment.spokesperson_name.split(' ');
+                        if (nameParts.length > 1) {
+                            userLastName = nameParts[nameParts.length - 1].toLowerCase();
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Could not parse experiment data:', error);
+                }
+            }
+            
+            // Fallback to DOM elements if JSON data not available
+            if (!experimentDataStr) {
+                const spokespersonCell = row.querySelector('.experiment-spokesperson');
+                if (spokespersonCell) {
+                    const spokespersonName = spokespersonCell.textContent.trim();
+                    if (spokespersonName && spokespersonName !== 'N/A') {
+                        const nameParts = spokespersonName.split(' ');
+                        if (nameParts.length > 1) {
+                            userLastName = nameParts[nameParts.length - 1].toLowerCase();
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Replace template variables
+    return template
+        .replace(/{year}/g, year)
+        .replace(/{run}/g, runNumber)
+        .replace(/{user}/g, userLastName);
+}
+
+// Initialize DOI checkbox interactions
+function initializeDoiCheckboxes() {
+    const createDoiCheckbox = document.getElementById('createDoi');
+    const draftDoiContainer = document.getElementById('draftDoiContainer');
+    const draftDoiCheckbox = document.getElementById('draftDoi');
+    
+    if (!createDoiCheckbox || !draftDoiContainer || !draftDoiCheckbox) return;
+    
+    // Function to toggle draft DOI visibility
+    function toggleDraftDoiVisibility() {
+        if (createDoiCheckbox.checked) {
+            draftDoiContainer.classList.remove('d-none');
+            draftDoiCheckbox.disabled = false;
+        } else {
+            draftDoiContainer.classList.add('d-none');
+            draftDoiCheckbox.checked = false;
+            draftDoiCheckbox.disabled = true;
+        }
+    }
+    
+    // Set initial state
+    toggleDraftDoiVisibility();
+    
+    // Listen for changes to create DOI checkbox
+    createDoiCheckbox.addEventListener('change', toggleDraftDoiVisibility);
+}
 
 // Initialize PVLogger file picker
 function initializePVLoggerFilePicker() {
@@ -171,6 +420,12 @@ function initializeExperimentModal() {
     // Initialize file picker for PVLogger Path
     initializePVLoggerFilePicker();
     
+    // Initialize DOI checkbox interactions
+    initializeDoiCheckboxes();
+    
+    // Initialize data path template dropdown
+    initializeDataPathTemplates();
+    
     // Real-time path validation
     const dataPathEl = document.getElementById('dataPath');
     if (dataPathEl) dataPathEl.addEventListener('input', debounceValidation);
@@ -199,26 +454,8 @@ function openExperimentModal(experimentId, mode = 'edit') {
     // Set defaults for queue processing
     document.getElementById('createDoi').checked = true;
     
-    // Generate data path template for the current experiment
-    ensureDataPathTemplate().then(() => {
-        const currentDataPath = document.getElementById('dataPath').value;
-        if (!currentDataPath || currentDataPath === 'Not set') {
-            const runSelect = document.getElementById('runSelect');
-            let runNumber = '';
-            
-            if (runSelect && runSelect.value) {
-                const selectedOption = runSelect.options[runSelect.selectedIndex];
-                if (selectedOption && selectedOption.text !== 'All') {
-                    const runName = selectedOption.text;
-                    runNumber = runName.includes('-') ? runName.split('-').pop() : runName;
-                }
-            }
-            
-            document.getElementById('dataPath').value = formatDataPath(dataPathTemplate, { runId: runNumber });
-        }
-    }).catch(() => {
-        // Continue without template
-    });
+    // Populate dropdown with resolved paths for this experiment
+    populateDataPathDropdown(experimentId);
     
     experimentModal.show();
 }
@@ -255,20 +492,32 @@ function loadExperimentData(experimentId, mode = 'view') {
             // If there's already a data path, use it as-is
             document.getElementById('dataPath').value = userFolder;
         } else {
-            // If there's no existing data path, generate one from the template
-            applyDataPathPrefix('', experimentId).then(prefixedPath => {
-                document.getElementById('dataPath').value = prefixedPath;
-            }).catch(() => {
-                // Fallback to empty if template generation fails
+            // Check if a technique is selected in the filters and prepopulate with its base_dir
+            const prepopulatedPath = getSelectedTechniqueBasePath();
+            if (prepopulatedPath) {
+                const populatedPath = populateDataPathTemplate(prepopulatedPath);
+                document.getElementById('dataPath').value = populatedPath;
+            } else {
                 document.getElementById('dataPath').value = '';
-            });
+            }
         }
         
         // Keep DOI unchecked for editing existing experiments
         document.getElementById('createDoi').checked = false;
     } else {
         // Data path is for queue processing
-        document.getElementById('dataPath').value = userFolder !== '' ? userFolder : '';
+        if (userFolder && userFolder.trim() !== '') {
+            document.getElementById('dataPath').value = userFolder;
+        } else {
+            // Check if a technique is selected in the filters and prepopulate with its base_dir
+            const prepopulatedPath = getSelectedTechniqueBasePath();
+            if (prepopulatedPath) {
+                const populatedPath = populateDataPathTemplate(prepopulatedPath);
+                document.getElementById('dataPath').value = populatedPath;
+            } else {
+                document.getElementById('dataPath').value = '';
+            }
+        }
         
         // DOI setting defaults to checked for new queue processing
         document.getElementById('createDoi').checked = true;
@@ -338,6 +587,7 @@ function proceedWithAddToQueue(formData, addToQueueBtn, originalButtonContent) {
         data_path: formData.get('dataPath') || null,
         pvlog_path: formData.get('pvLoggerPathValue') || null,
         doi: formData.get('createDoi') === 'on',
+        draft_doi: formData.get('draftDoi') === 'on',
         proposal_number: formData.get('proposalNumber') || null,
         acknowledgments: selectedAcks
     };
@@ -413,7 +663,8 @@ function openExperimentViewModal(experimentId) {
             const experimentNumber = row.querySelector('.experiment-id')?.textContent.trim() || '';
             const title = row.querySelector('.experiment-title-text')?.textContent.trim() || '';
             const statusBadge = row.querySelector('.status-badge');
-            populateViewModalBasic(title, experimentNumber, proposal, statusBadge);
+            const dataPath = row.getAttribute('data-user-folder') || '';
+            populateViewModalBasic(title, experimentNumber, proposal, statusBadge, dataPath);
         }
     } catch (error) {
         console.error('Error parsing experiment data:', error);
@@ -422,7 +673,8 @@ function openExperimentViewModal(experimentId) {
         const experimentNumber = row.querySelector('.experiment-id')?.textContent.trim() || '';
         const title = row.querySelector('.experiment-title-text')?.textContent.trim() || '';
         const statusBadge = row.querySelector('.status-badge');
-        populateViewModalBasic(title, experimentNumber, proposal, statusBadge);
+        const dataPath = row.getAttribute('data-user-folder') || '';
+        populateViewModalBasic(title, experimentNumber, proposal, statusBadge, dataPath);
     }
 
     if (!experimentViewModal) {
@@ -433,13 +685,14 @@ function openExperimentViewModal(experimentId) {
 }
 
 // Populate view modal with basic information (fallback)
-function populateViewModalBasic(title, experimentNumber, proposal, statusBadge) {
+function populateViewModalBasic(title, experimentNumber, proposal, statusBadge, dataPath) {
     const titleEl = document.getElementById('detailViewTitle');
     const esafEl = document.getElementById('detailViewExperimentNumber');
     const proposalEl = document.getElementById('detailViewProposal');
     const statusEl = document.getElementById('detailViewStatus');
     const beamlineEl = document.getElementById('detailViewBeamline');
     const descriptionEl = document.getElementById('detailViewDescription');
+    const dataPathEl = document.getElementById('detailViewDataPath');
     const startDateEl = document.getElementById('detailViewStartDate');
     const endDateEl = document.getElementById('detailViewEndDate');
     const spokespersonEl = document.getElementById('detailViewSpokesperson');
@@ -458,6 +711,11 @@ function populateViewModalBasic(title, experimentNumber, proposal, statusBadge) 
         } else {
             statusEl.textContent = 'N/A';
         }
+    }
+    
+    // Set data path from experiment data or N/A
+    if (dataPathEl) {
+        dataPathEl.textContent = (dataPath && dataPath.trim() !== '') ? dataPath : 'N/A';
     }
     
     // Set other fields to N/A for now
@@ -479,6 +737,7 @@ function populateViewModalFull(experiment) {
     const statusEl = document.getElementById('detailViewStatus');
     const beamlineEl = document.getElementById('detailViewBeamline');
     const descriptionEl = document.getElementById('detailViewDescription');
+    const dataPathEl = document.getElementById('detailViewDataPath');
     const startDateEl = document.getElementById('detailViewStartDate');
     const endDateEl = document.getElementById('detailViewEndDate');
     const spokespersonEl = document.getElementById('detailViewSpokesperson');
@@ -505,6 +764,9 @@ function populateViewModalFull(experiment) {
     
     if (beamlineEl) beamlineEl.textContent = experiment.beamline_name || 'N/A';
     if (descriptionEl) descriptionEl.textContent = experiment.description || 'N/A';
+    if (dataPathEl) {
+        dataPathEl.textContent = (experiment.folder && experiment.folder.trim() !== '') ? experiment.folder : 'N/A';
+    }
     
     // Format dates
     if (startDateEl) {
@@ -693,112 +955,6 @@ function validateDataPath(path) {
     });
 }
 
-// Function to ensure we have the current data path template
-function ensureDataPathTemplate() {
-    const stationSelect = document.getElementById('stationSelect');
-    const techniqueSelect = document.getElementById('techniqueSelect');
-    
-    if (!stationSelect || !techniqueSelect) {
-        return Promise.reject('Station or technique select not found');
-    }
-    
-    const stationId = stationSelect.value;
-    const techniqueId = techniqueSelect.value;
-    
-    if (!stationId || !techniqueId) {
-        return Promise.reject('Station or technique not selected');
-    }
-    
-    return fetchDataPathTemplate(stationId, techniqueId);
-}
-
-// Function to fetch and store the data path template
-function fetchDataPathTemplate(stationId, techniqueId) {
-    if (!stationId || !techniqueId) return Promise.reject('Missing required parameters');
-
-    console.log(`Fetching data path for station: ${stationId}, technique: ${techniqueId}`);
-    return fetch(`/api/v1/get_data_path?station_id=${stationId}&technique_id=${techniqueId}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Server responded with ${response.status}`);
-            }
-            return response.text();
-        })
-        .then(template => {
-            console.log(`Received template: "${template}"`);
-            dataPathTemplate = template;
-            return template;
-        });
-}
-
-// Format data path based on template and experiment data
-function formatDataPath(template, experimentData = {}) {
-    if (!template) return '';
-
-    const currentYear = new Date().getFullYear();
-    const runId = experimentData.runId || '';
-
-    return template
-        .replace(/{YEAR}/g, currentYear)
-        .replace(/{RUN}/g, runId);
-}
-
-// Apply data path prefix based on station and technique
-function applyDataPathPrefix(originalPath, experimentId) {
-    return new Promise((resolve, reject) => {
-        const stationSelect = document.getElementById('stationSelect');
-        const techniqueSelect = document.getElementById('techniqueSelect');
-        const runSelect = document.getElementById('runSelect');
-        
-        // Check if we have station and technique selected
-        if (!stationSelect || !techniqueSelect || !stationSelect.value || !techniqueSelect.value) {
-            console.log('Station or technique not selected, using original path');
-            resolve(originalPath);
-            return;
-        }
-        
-        const stationId = stationSelect.value;
-        const techniqueId = techniqueSelect.value;
-        
-        // Get run number for template variable replacement
-        let runNumber = '';
-        if (runSelect && runSelect.value) {
-            const selectedOption = runSelect.options[runSelect.selectedIndex];
-            if (selectedOption && selectedOption.text !== 'All') {
-                const runName = selectedOption.text;
-                runNumber = runName.includes('-') ? runName.split('-').pop() : runName;
-            }
-        }
-        
-        // Fetch the data path template
-        fetchDataPathTemplate(stationId, techniqueId)
-            .then(template => {
-                if (!template || template.trim() === '') {
-                    console.log('No template found, using original path');
-                    resolve(originalPath);
-                    return;
-                }
-                
-                // Format the template with current year and run
-                const formattedPrefix = formatDataPath(template, { runId: runNumber });
-                
-                // Combine prefix with original path
-                // If originalPath starts with the formattedPrefix, don't duplicate it
-                if (originalPath.startsWith(formattedPrefix)) {
-                    resolve(originalPath);
-                } else {
-                    // Add a separator if needed
-                    const separator = formattedPrefix.endsWith('/') || formattedPrefix.endsWith('\\') || originalPath.startsWith('/') || originalPath.startsWith('\\') ? '' : '/';
-                    const combinedPath = formattedPrefix + separator + originalPath;
-                    resolve(combinedPath);
-                }
-            })
-            .catch(error => {
-                console.log('Failed to fetch template:', error);
-                reject(error);
-            });
-    });
-}
 
 // Search functionality
 let searchTimeout = null;
@@ -832,13 +988,15 @@ function performClientSideSearch(searchTerm) {
             return;
         }
         
-        // Search across proposal, experiment ID, and title
+        // Search across proposal, experiment ID, spokesperson, and title
         const proposal = row.querySelector('.experiment-proposal').textContent.toLowerCase();
         const experimentId = row.querySelector('.experiment-id').textContent.toLowerCase();
+        const spokesperson = row.querySelector('.experiment-spokesperson').textContent.toLowerCase();
         const title = row.querySelector('.experiment-title').textContent.toLowerCase();
         
         const matches = proposal.includes(term) || 
                        experimentId.includes(term) || 
+                       spokesperson.includes(term) || 
                        title.includes(term);
         
         row.style.display = matches ? '' : 'none';
@@ -856,6 +1014,22 @@ function initializeFilterFormAutoSubmit() {
         const selects = filterForm.querySelectorAll('select');
         selects.forEach(select => {
             select.addEventListener('change', () => {
+                // If this is the technique select, update the data path dropdown if modal is open
+                if (select === techniqueSelect && currentEditingExperiment) {
+                    populateDataPathDropdown(currentEditingExperiment);
+                    
+                    // Also update the data path field with the new technique's base_dir
+                    const dataPathInput = document.getElementById('dataPath');
+                    if (dataPathInput && (!dataPathInput.value || dataPathInput.value.trim() === '')) {
+                        const prepopulatedPath = getSelectedTechniqueBasePath();
+                        if (prepopulatedPath) {
+                            const populatedPath = populateDataPathTemplate(prepopulatedPath);
+                            dataPathInput.value = populatedPath;
+                            // Trigger validation
+                            debounceValidation();
+                        }
+                    }
+                }
                 filterForm.submit();
             });
         });
@@ -883,28 +1057,6 @@ function initializeFilterFormAutoSubmit() {
         });
     }
     
-    // Listen for station/technique changes to update data path template
-    if (stationSelect && techniqueSelect) {
-        const handleTemplateUpdate = () => {
-            const stationId = stationSelect.value;
-            const techniqueId = techniqueSelect.value;
-            
-            if (stationId && techniqueId) {
-                fetchDataPathTemplate(stationId, techniqueId)
-                    .catch(error => {
-                        console.log('Could not fetch data path template:', error);
-                    });
-            }
-        };
-        
-        stationSelect.addEventListener('change', handleTemplateUpdate);
-        techniqueSelect.addEventListener('change', handleTemplateUpdate);
-        
-        // Initial load if both are already selected
-        if (stationSelect.value && techniqueSelect.value) {
-            handleTemplateUpdate();
-        }
-    }
 }
 
 // Sorting functionality
@@ -933,6 +1085,9 @@ function initializeSortHandlers() {
 function updateSortState(column, direction) {
     // Clear all previous sorts - only show one column sorted at a time
     currentSortState = [{ column, direction }];
+    
+    // Save sort state to sessionStorage
+    saveSortStateToSession();
 }
 
 function updateSortUI() {
@@ -977,7 +1132,11 @@ function getCellValue(row, column) {
         case 'proposal':
             return row.querySelector('.experiment-proposal')?.textContent.trim() || '';
         case 'experiment':
-            return row.querySelector('.experiment-id')?.textContent.trim() || '';
+            // Convert ESAF to number for proper sorting
+            const esafText = row.querySelector('.experiment-id')?.textContent.trim() || '0';
+            return parseInt(esafText, 10) || 0;
+        case 'spokesperson':
+            return row.querySelector('.experiment-spokesperson')?.textContent.trim().toLowerCase() || '';
         case 'title':
             return row.querySelector('.experiment-title-text')?.textContent.trim().toLowerCase() || '';
         case 'status':
@@ -986,8 +1145,6 @@ function getCellValue(row, column) {
             return '';
     }
 }
-
-// Update experiment status badge in the table
 function updateExperimentStatusBadge(experimentId, newStatus) {
     const row = document.querySelector(`tr[data-experiment-id="${experimentId}"]`);
     if (!row) {
@@ -1079,6 +1236,49 @@ function showNotification(type, message) {
     });
 }
 
+// Save sort state to sessionStorage
+function saveSortStateToSession() {
+    try {
+        sessionStorage.setItem('tableSort', JSON.stringify(currentSortState));
+    } catch (e) {
+        console.warn('Could not save sort state to sessionStorage:', e);
+    }
+}
+
+// Load sort state from sessionStorage
+function loadSortStateFromSession() {
+    try {
+        const saved = sessionStorage.getItem('tableSort');
+        if (saved) {
+            const parsedState = JSON.parse(saved);
+            if (Array.isArray(parsedState) && parsedState.length > 0) {
+                return parsedState;
+            }
+        }
+    } catch (e) {
+        console.warn('Could not load sort state from sessionStorage:', e);
+    }
+    return null;
+}
+
+// Set default sorting to ESAF column
+function setDefaultSorting() {
+    // Try to load saved sort state first
+    const savedState = loadSortStateFromSession();
+    
+    if (savedState) {
+        // Use saved sort state
+        currentSortState = savedState;
+    } else {
+        // Use default sort (ESAF column in ascending order)
+        currentSortState = [{ column: 'experiment', direction: 'asc' }];
+        saveSortStateToSession();
+    }
+    
+    updateSortUI();
+    sortTableByState('experimentsTableBody');
+}
+
 // Initialize the application
 document.addEventListener('DOMContentLoaded', () => {
     fetchAcknowledgmentOptions();
@@ -1087,5 +1287,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeFilterFormAutoSubmit();
     initializeSortHandlers();
     initializeSearchFunctionality();
-    updateBulkActionButtons();
+    
+    // Set default sorting by ESAF column
+    setDefaultSorting();
 });

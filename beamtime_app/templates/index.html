@@ -62,17 +62,10 @@
                 {% endfor %}
             </select>
             
-            <select id="stationSelect" name="station" class="inline-filter-select">
-                <option value="">All Stations</option>
-                {% for station in stations %}
-                <option value="{{ station.id }}" {% if station.id == selected_station %}selected{% endif %}>{{ station.name }}</option>
-                {% endfor %}
-            </select>
-            
             <select id="techniqueSelect" name="technique" class="inline-filter-select">
                 <option value="">All Techniques</option>
                 {% for technique in techniques %}
-                <option value="{{ technique.id }}" {% if technique.id == selected_technique %}selected{% endif %}>{{ technique.name }}</option>
+                <option value="{{ technique.id }}" data-user="{{ technique.user_name }}" {% if technique.id == selected_technique %}selected{% endif %}>{{ technique.name }}</option>
                 {% endfor %}
             </select>
             
@@ -96,6 +89,7 @@
                     <tr>
                         <th scope="col" class="sortable-header" data-column="proposal">Proposal</th>
                         <th scope="col" class="sortable-header" data-column="experiment">ESAF</th>
+                        <th scope="col" class="sortable-header" data-column="spokesperson">Spokesperson</th>
                         <th scope="col" class="sortable-header" data-column="title">Title</th>
                         <th scope="col">Actions</th>
                     </tr>
@@ -110,6 +104,7 @@
                     data-experiment-data='{{ experiment | tojson | safe }}'>
                         <td class="experiment-proposal">{{ experiment.proposal or 'N/A' }}</td>
                         <td class="experiment-id">{{ experiment.id }}</td>
+                        <td class="experiment-spokesperson">{{ experiment.spokesperson_name or 'N/A' }}</td>
                         <td class="experiment-title">
                             <div class="experiment-title-container">
                                 <span class="experiment-title-text">{{ experiment.title }}</span>
@@ -167,11 +162,23 @@
                         <div class="row mb-4">
                             <div class="col-md-6">
                                 <label for="dataPath" class="form-label">Data Path</label>
-                                <div class="input-group">
-                                    <input type="text" class="form-control" id="dataPath" name="dataPath">
-                                    <button class="btn btn-outline-secondary" type="button" id="validatePathBtn" title="Validate Path">
-                                        <i class="bi bi-check2-circle"></i>
-                                    </button>
+                                <div class="position-relative">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="dataPath" name="dataPath">
+                                        <button class="btn btn-outline-secondary" type="button" id="dataPathDropdownBtn" title="Select data path template">
+                                            <i class="bi bi-chevron-down"></i>
+                                        </button>
+                                        <button class="btn btn-outline-secondary" type="button" id="validatePathBtn" title="Validate Path">
+                                            <i class="bi bi-check2-circle"></i>
+                                        </button>
+                                    </div>
+                                    <div class="dropdown-menu position-absolute" id="dataPathTemplates">
+                                        {% for technique in techniques %}
+                                        {% if technique.base_dir %}
+                                        <a class="dropdown-item" href="#" data-template="{{ technique.base_dir }}" data-user="{{ technique.user_name }}">{{ technique.base_dir }}</a>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </div>
                                 </div>
                                 <div class="mt-2">
                                     <span id="pathValidationMessage" class="small"></span>
@@ -222,6 +229,15 @@
                                     <input class="form-check-input" type="checkbox" id="createDoi" name="createDoi" checked>
                                     <label class="form-check-label" for="createDoi">
                                         Create DOI for this experiment
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-check" id="draftDoiContainer">
+                                    <input class="form-check-input" type="checkbox" id="draftDoi" name="draftDoi">
+                                    <label class="form-check-label" for="draftDoi">
+                                        Create as draft DOI
                                     </label>
                                 </div>
                             </div>
@@ -307,6 +323,14 @@
                             <div class="col-md-12">
                                 <div class="form-label fw-bold">Description</div>
                                 <div id="detailViewDescription" class="text-break"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Data Path Row -->
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <div class="form-label fw-bold">Data Path</div>
+                                <div id="detailViewDataPath" class="font-monospace text-break"></div>
                             </div>
                         </div>
                         
