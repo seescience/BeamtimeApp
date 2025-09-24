@@ -1,10 +1,10 @@
-#!/bin/bash
+#!/usr/bin/env python3
 # ----------------------------------------------------------------------------------
 # Project: BeamtimeApp
-# File: start_beamtime_app.sh
+# File: beamtime_app/services/__init__.py
 # ----------------------------------------------------------------------------------
-# Purpose: 
-# This script is used to start the BeamtimeApp web application.
+# Purpose:
+# This file is used to define the services for the BeamtimeApp.
 # ----------------------------------------------------------------------------------
 # Author: Christofanis Skordas
 #
@@ -12,4 +12,13 @@
 # Copyright (C) 2025 NSF SEES, USA
 # ----------------------------------------------------------------------------------
 
-uv run BeamtimeApp.py & > /dev/null 2>&1
+from beamtime_app.services.auth_service import AuthService, LDAPAuth, User, cache_user, clear_user_cache, get_user_by_id
+
+__all__ = [
+    "AuthService",
+    "get_user_by_id",
+    "cache_user",
+    "clear_user_cache",
+    "LDAPAuth",
+    "User",
+]

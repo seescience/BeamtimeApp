@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # ----------------------------------------------------------------------------------
 # Project: BeamtimeApp
-# File: beamtime_app/routes.py
+# File: beamtime_app/config/__init__.py
 # ----------------------------------------------------------------------------------
 # Purpose:
-# This file is used to define the routes for the BeamtimeApp.
+# This is the configuration package for the Beamtime application.
 # ----------------------------------------------------------------------------------
 # Author: Christofanis Skordas
 #
@@ -12,12 +12,6 @@
 # Copyright (C) 2025 NSF SEES, USA
 # ----------------------------------------------------------------------------------
 
-from flask import Blueprint, redirect, request, url_for
+from beamtime_app.config.base_config import BaseConfig
 
-beamtime = Blueprint("beamtime", __name__)
-
-
-@beamtime.route("/")
-def home():
-    # Forward all query parameters to /api/v1/
-    return redirect(url_for("api_v1.home", **request.args))
+__all__ = ["BaseConfig"]

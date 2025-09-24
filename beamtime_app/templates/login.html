@@ -1,0 +1,64 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div class="login-container">
+        <div class="login-header">
+            <img src="https://seescience.org/wp-content/uploads/2024/07/NSF-SEES-Logo.png" 
+                 alt="NSF SEES Logo" 
+                 class="sees-logo">
+            <h2>Beamtime Management</h2>
+        </div>
+        
+        <div class="login-body">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                            <i class="bi bi-{{ 'exclamation-triangle' if category == 'error' else 'info-circle' }} me-2"></i>
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form id="loginForm" method="POST">
+                <div class="form-floating mb-3">
+                    <input type="text" class="form-control" id="username" name="username" placeholder="Username" required>
+                    <label for="username"><i class="bi bi-person me-2"></i>Username</label>
+                </div>
+                
+                <div class="form-floating mb-4">
+                    <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
+                    <label for="password"><i class="bi bi-lock me-2"></i>Password</label>
+                </div>
+                
+                <div class="d-grid">
+                    <button class="btn btn-primary" type="submit" id="loginBtn">
+                        <span class="btn-text">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
+                        </span>
+                        <span class="loading-spinner">
+                            <i class="bi bi-arrow-clockwise me-2"></i>Signing in...
+                        </span>
+                    </button>
+                </div>
+            </form>
+
+            <!-- System Information -->
+            <div class="system-info">
+                <i class="bi bi-building me-1"></i>
+                <a href="https://seescience.org" target="_blank" rel="noopener noreferrer">NSF SEES</a> | 
+                <a href="https://gsecars.uchicago.edu" target="_blank" rel="noopener noreferrer">GSECARS, The University of Chicago</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Theme Switcher (positioned absolutely) -->
+<div class="login-theme-switcher">
+    <button class="theme-switcher-button" id="themeSwitcher" aria-label="Toggle theme">
+        <i class="bi bi-sun-fill" id="themeIcon"></i>
+    </button>
+</div>
+{% endblock %}

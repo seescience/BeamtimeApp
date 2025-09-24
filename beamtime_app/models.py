@@ -14,20 +14,32 @@
 
 import datetime
 from dataclasses import dataclass, field
-from typing import Any, Dict
+from enum import IntEnum
+from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from beamtime_app.database import BASE
 
-__all__ = ["Acknowledgment", "Beamline", "DataPath", "Experiment", "Info", "Person", "ProcessStatus", "Queue", "Run", "Station", "Technique"]
+__all__ = ["Info", "Acknowledgment", "Technique", "Run", "APSBeamline", "Experiment", "Person", "ProcessStatus", "ProcessStatusEnum", "Queue"]
+
+
+class ProcessStatusEnum(IntEnum):
+    """Enum for process status values."""
+
+    NEW = 1
+    PENDING = 2
+    MODIFIED = 3
+    PROCESSED = 4
+    LOCKED = 5
+    ERROR = 6
 
 
 class BaseModel:
-    """Base class for the data models."""
+    """Base class for all data models."""
 
-    _columns: Dict[str, Any] = field(default_factory=dict)
+    _columns: dict[str, Any] = field(default_factory=dict)
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} - {', '.join(f'{k}: {v}' for k, v in self._columns.items())}>"
@@ -71,10 +83,10 @@ class Run(BASE, BaseModel):
 
 
 @dataclass
-class Beamline(BASE, BaseModel):
-    """Model for the beamlines."""
+class APSBeamline(BASE, BaseModel):
+    """Model for the APS beamlines."""
 
-    __tablename__ = "beamline"
+    __tablename__ = "apsbss_beamline"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(64))
@@ -91,22 +103,22 @@ class Technique(BASE, BaseModel):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(512))
+    base_dir: Mapped[str] = mapped_column(String(512))
+    user_name: Mapped[str] = mapped_column(String(32))
+    pvlog_template: Mapped[str] = mapped_column(Text)
+    beamline_id: Mapped[int] = mapped_column(Integer, ForeignKey("apsbss_beamline.id"))
+    station: Mapped[str] = mapped_column(String(255))
 
     def __post_init__(self) -> None:
-        self._columns = {"id": self.id, "name": self.name}
-
-
-@dataclass
-class Station(BASE, BaseModel):
-    """Model for the stations."""
-
-    __tablename__ = "station"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False)
-    name: Mapped[str] = mapped_column(Text, nullable=False)
-
-    def __post_init__(self) -> None:
-        self._columns = {"id": self.id, "name": self.name}
+        self._columns = {
+            "id": self.id,
+            "name": self.name,
+            "base_dir": self.base_dir,
+            "user_name": self.user_name,
+            "pvlog_template": self.pvlog_template,
+            "beamline_id": self.beamline_id,
+            "station": self.station,
+        }
 
 
 @dataclass
@@ -170,12 +182,13 @@ class Experiment(BASE, BaseModel):
     description: Mapped[str] = mapped_column(Text)
     start_date: Mapped[datetime.datetime] = mapped_column(DateTime)
     end_date: Mapped[datetime.datetime] = mapped_column(DateTime)
-    user_folder: Mapped[str] = mapped_column(Text)
-    data_doi: Mapped[str] = mapped_column(Text)
+    folder: Mapped[str] = mapped_column(Text)
+    sees_doi: Mapped[str] = mapped_column(Text)
     esaf_pdf_file: Mapped[str] = mapped_column(Text)
     proposal_pdf_file: Mapped[str] = mapped_column(Text)
-    folder_status_id: Mapped[int] = mapped_column(Integer)
-    process_status_id: Mapped[int] = mapped_column(Integer)
+    pvlog_file: Mapped[str] = mapped_column(Text)
+    process_status_id: Mapped[int] = mapped_column(Integer, ForeignKey("process_status.id"), default=ProcessStatusEnum.NEW)
+    old_process_status_id: Mapped[int] = mapped_column(Integer, ForeignKey("process_status.id"), default=ProcessStatusEnum.NEW)
 
     def __post_init__(self) -> None:
         self._columns = {
@@ -192,12 +205,13 @@ class Experiment(BASE, BaseModel):
             "description": self.description,
             "start_date": self.start_date,
             "end_date": self.end_date,
-            "user_folder": self.user_folder,
-            "data_doi": self.data_doi,
+            "folder": self.folder,
+            "sees_doi": self.sees_doi,
             "esaf_pdf_file": self.esaf_pdf_file,
             "proposal_pdf_file": self.proposal_pdf_file,
-            "folder_status_id": self.folder_status_id,
-            "process_status": self.process_status,
+            "pvlog_file": self.pvlog_file,
+            "process_status_id": self.process_status_id,
+            "old_process_status_id": self.old_process_status_id,
         }
 
 
@@ -216,46 +230,25 @@ class ProcessStatus(BASE, BaseModel):
 
 @dataclass
 class Queue(BASE, BaseModel):
-    """Model for the queue."""
+    """Model for the queue table."""
 
     __tablename__ = "queue"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    experiment_number: Mapped[int] = mapped_column(Integer)
-    title: Mapped[str] = mapped_column(Text)
+    experiment_id: Mapped[int] = mapped_column(Integer, ForeignKey("experiment.id"))
     data_path: Mapped[str] = mapped_column(Text)
     pvlog_path: Mapped[str] = mapped_column(Text)
-    doi: Mapped[bool] = mapped_column()
-    proposal_number: Mapped[int] = mapped_column(Integer)
+    create_doi: Mapped[bool] = mapped_column(Boolean)
+    draft_doi: Mapped[bool] = mapped_column(Boolean)
     acknowledgments: Mapped[str] = mapped_column(Text)
 
     def __post_init__(self) -> None:
         self._columns = {
             "id": self.id,
-            "experiment_number": self.experiment_number,
-            "title": self.title,
+            "experiment_id": self.experiment_id,
             "data_path": self.data_path,
             "pvlog_path": self.pvlog_path,
-            "doi": self.doi,
-            "proposal_number": self.proposal_number,
+            "create_doi": self.create_doi,
+            "draft_doi": self.draft_doi,
             "acknowledgments": self.acknowledgments,
-        }
-
-@dataclass
-class DataPath(BASE, BaseModel):
-    """Model for the data paths."""
-
-    __tablename__ = "data_path"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    path_template: Mapped[str] = mapped_column(Text)
-    station_id: Mapped[int] = mapped_column(Integer, ForeignKey("station.id"))
-    technique_id: Mapped[int] = mapped_column(Integer, ForeignKey("technique.id"))
-
-    def __post_init__(self) -> None:
-        self._columns = {
-            "id": self.id,
-            "path_template": self.path_template,
-            "station_id": self.station_id,
-            "technique_id": self.technique_id,
         }
