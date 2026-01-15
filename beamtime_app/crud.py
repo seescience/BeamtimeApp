@@ -11,7 +11,7 @@
 # Copyright (C) 2025 NSF SEES, USA
 # ----------------------------------------------------------------------------------
 
-from typing import Any
+import logging
 
 from sqlalchemy import insert, update
 from sqlalchemy.future import select
@@ -30,6 +30,9 @@ from beamtime_app.models import (
 )
 from beamtime_app.utils import format_experiment_data, to_dictionary
 
+# Configure logging
+logger = logging.getLogger(__name__)
+
 __all__ = ["add_to_queue", "get_all_entries", "get_experiments"]
 
 
@@ -38,7 +41,7 @@ def _select_all(db: Session, model: BaseModel) -> list[BaseModel]:
     return db.execute(select(model)).scalars().all()
 
 
-def get_all_entries(model: BaseModel) -> list[dict[str, Any]]:
+def get_all_entries(model: BaseModel) -> list[dict[str, any]]:
     """Returns all entries for a given model."""
     entries = []
 
@@ -46,8 +49,11 @@ def get_all_entries(model: BaseModel) -> list[dict[str, Any]]:
         try:
             entries = [to_dictionary(entry) for entry in _select_all(session, model)]
         except DBException as e:
-            # Temporary error. Switch to email alerts
-            print(e)
+            model_name = getattr(model, "__name__", "Unknown")
+            logger.error(f"Database error while fetching entries for {model_name}: {str(e)}")
+        except Exception as e:
+            model_name = getattr(model, "__name__", "Unknown")
+            logger.error(f"Unexpected error while fetching entries for {model_name}: {str(e)}")
 
     return entries
 
@@ -142,7 +148,9 @@ def get_experiments(
             ]
 
         except DBException as e:
-            print(f"Database error: {e}")
+            logger.error(f"Database error while fetching experiments: {str(e)}")
+        except Exception as e:
+            logger.error(f"Unexpected error while fetching experiments: {str(e)}")
 
     # Apply filters
     if beamline:
@@ -160,7 +168,7 @@ def get_experiments(
     return format_experiment_data(experiments)
 
 
-def add_to_queue(rows: list[dict[str, Any]]) -> dict[str, int]:
+def add_to_queue(rows: list[dict[str, any]]) -> dict[str, int]:
     """Adds multiple rows to the queue table and updates experiment status to pending."""
     success_count = 0
     failure_count = 0
@@ -196,7 +204,7 @@ def add_to_queue(rows: list[dict[str, Any]]) -> dict[str, int]:
             session.commit()
             success_count = len(sanitized_rows)
         except Exception as e:
-            print(f"Failed to add rows to queue: {e}")
+            logger.error(f"Failed to add rows to queue: {str(e)}")
             session.rollback()
             failure_count = len(sanitized_rows)
 

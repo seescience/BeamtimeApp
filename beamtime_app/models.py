@@ -15,7 +15,6 @@
 import datetime
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import Any
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -39,7 +38,7 @@ class ProcessStatusEnum(IntEnum):
 class BaseModel:
     """Base class for all data models."""
 
-    _columns: dict[str, Any] = field(default_factory=dict)
+    _columns: dict[str, any] = field(default_factory=dict)
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} - {', '.join(f'{k}: {v}' for k, v in self._columns.items())}>"

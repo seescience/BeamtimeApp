@@ -257,14 +257,26 @@ class LDAPAuth:
 
             attributes = user_data["attributes"]
 
+            # Extract user information (handle missing attributes gracefully)
+            first_name = (
+                attributes.get(current_app.config["LDAP_USER_FIRST_NAME_ATTR"], [""])[0]
+                if attributes.get(current_app.config["LDAP_USER_FIRST_NAME_ATTR"])
+                else ""
+            )
+            last_name = (
+                attributes.get(current_app.config["LDAP_USER_LAST_NAME_ATTR"], [""])[0]
+                if attributes.get(current_app.config["LDAP_USER_LAST_NAME_ATTR"])
+                else ""
+            )
+            user_groups = attributes.get("memberOf", [])
+
             user = User(
                 username=username,
-                email=attributes.get(self.config.user_email_attr, [""])[0] if attributes.get(self.config.user_email_attr) else "",
-                first_name=attributes.get(self.config.user_first_name_attr, [""])[0] if attributes.get(self.config.user_first_name_attr) else "",
-                last_name=attributes.get(self.config.user_last_name_attr, [""])[0] if attributes.get(self.config.user_last_name_attr) else "",
-                display_name=attributes.get(self.config.user_display_name_attr, [""])[0] if attributes.get(self.config.user_display_name_attr) else "",
+                first_name=first_name,
+                last_name=last_name,
+                display_name=f"{first_name} {last_name}".strip(),
                 dn=user_data["dn"],
-                groups=attributes.get("memberOf", []),
+                groups=user_groups,
             )
 
             return user
