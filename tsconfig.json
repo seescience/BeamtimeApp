@@ -1,0 +1,37 @@
+/* ----------------------------------------------------------------------------------
+ * Project: BeamtimeApp
+ * File: tsconfig.json
+ * ----------------------------------------------------------------------------------
+ * Purpose:
+ * This file configures the TypeScript compiler settings for the BeamtimeApp frontend.
+ * ----------------------------------------------------------------------------------
+ * Author: Christofanis Skordas
+ *
+ * Copyright (C) 2025-2026 GSECARS, The University of Chicago, USA
+ * Copyright (C) 2025-2026 NSF SEES, USA
+ * ---------------------------------------------------------------------------------- */
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "outDir": "./beamtime_app/static/js",
+    "rootDir": "./beamtime_app/static/src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": true,
+    "removeComments": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["beamtime_app/static/src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

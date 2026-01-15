@@ -1,0 +1,29 @@
+{
+  "_comment": "-----------------------------------------------------------------------------",
+  "_comment2": "Project: BeamtimeApp",
+  "_comment3": "File: package.json",
+  "_comment4": "Purpose: This file defines Node.js dependencies and build scripts for TypeScript compilation.",
+  "_comment5": "Author: Christofanis Skordas",
+  "_comment6": "Copyright (C) 2025-2026 GSECARS, The University of Chicago, USA",
+  "_comment7": "Copyright (C) 2025-2026 NSF SEES, USA",
+  "_comment8": "-----------------------------------------------------------------------------",
+  "name": "beamtime-app",
+  "_comment9": "Note: Version should match pyproject.toml [project] version",
+  "version": "0.1.2",
+  "description": "BeamtimeApp TypeScript frontend - Node.js package configuration",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "clean": "rm -rf beamtime_app/static/js/**/*.js beamtime_app/static/js/**/*.js.map beamtime_app/static/js/**/*.d.ts",
+    "clean:pycache": "find . -type d -name __pycache__ -exec rm -r {} + 2>/dev/null || true",
+    "clean:all": "npm run clean && npm run clean:pycache"
+  },
+  "keywords": [],
+  "author": "Christofanis Skordas",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/bootstrap": "^5.2.10",
+    "typescript": "^5.9.3"
+  }
+}

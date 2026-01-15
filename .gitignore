@@ -8,13 +8,16 @@
 # ----------------------------------------------------------------------------------
 # Author: Christofanis Skordas
 #
-# Copyright (C) 2025 GSECARS, The University of Chicago, USA
-# Copyright (C) 2025 NSF SEES, USA
+# Copyright (C) 2025-2026 GSECARS, The University of Chicago, USA
+# Copyright (C) 2025-2026 NSF SEES, USA
 # ----------------------------------------------------------------------------------
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
+*$py.class
+*.so
+.Python
 
 # Distribution / packaging
 *.egg-info/
@@ -25,6 +28,8 @@ wheels/
 # Python virtual environments
 venv/
 .venv/
+ENV/
+env/
 
 # OS generated files
 .DS_Store
@@ -37,12 +42,23 @@ Desktop.ini
 .idea/
 .vscode/
 *.code-workspace
+*.swp
+*.swo
 
 # Tools
 *.mypy_cache/
 
 # Logs
 logs/
+*.log
+
+# TypeScript / Node.js
+node_modules/
+*.js.map
+*.d.ts
+!beamtime_app/static/js/**/*.js
+beamtime_app/static/js/**/*.js.map
+beamtime_app/static/js/**/*.d.ts
 
 # Sensitive data
 .env

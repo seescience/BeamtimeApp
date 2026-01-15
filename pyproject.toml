@@ -8,13 +8,13 @@
 # ----------------------------------------------------------------------------------
 # Author: Christofanis Skordas
 #
-# Copyright (C) 2025 GSECARS, The University of Chicago, USA
-# Copyright (C) 2025 NSF SEES, USA
+# Copyright (C) 2025-2026 GSECARS, The University of Chicago, USA
+# Copyright (C) 2025-2026 NSF SEES, USA
 # ----------------------------------------------------------------------------------
 
 [project]
 name = "BeamtimeApp"
-version = "0.1.1"
+version = "0.1.2"
 authors = [
     {name = "Christofanis Skordas", email = "55315750+skordaschristofanis@users.noreply.github.com"}
 ]

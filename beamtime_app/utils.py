@@ -8,8 +8,8 @@
 # ----------------------------------------------------------------------------------
 # Author: Christofanis Skordas
 #
-# Copyright (C) 2025 GSECARS, The University of Chicago, USA
-# Copyright (C) 2025 NSF SEES, USA
+# Copyright (C) 2025-2026 GSECARS, The University of Chicago, USA
+# Copyright (C) 2025-2026 NSF SEES, USA
 # ----------------------------------------------------------------------------------
 
 import re
