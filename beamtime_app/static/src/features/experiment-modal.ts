@@ -14,9 +14,9 @@
 
 import type { Experiment } from '../types/index.js';
 import { NA_VALUE } from '../utils/constants.js';
-import { formatDate, formatPersonWithEmail } from '../utils/experiment.js';
+import { formatDate, formatPersonWithEmail, getTemplateValues, getExperimentDataFromRow } from '../utils/experiment.js';
 import { escapeHtml, isValidValue } from '../utils/dom.js';
-import { setCurrentEditingExperiment, setExperimentModal, setExperimentViewModal } from '../state/index.js';
+import { setCurrentEditingExperiment, setExperimentModal, setExperimentViewModal, currentEditingExperiment } from '../state/index.js';
 
 // Bootstrap Modal type
 interface BootstrapModal {
@@ -40,7 +40,15 @@ export function initializeExperimentModal(): void {
         if (Bootstrap && Bootstrap.Modal) {
             experimentModalInstance = new Bootstrap.Modal(modalElement);
             setExperimentModal(experimentModalInstance);
+            
+            // Initialize handlers when modal is shown (ensures DOM is ready)
+            modalElement.addEventListener('shown.bs.modal', () => {
+                initializeModalHandlers();
+            });
         }
+        
+        // Also initialize handlers immediately (in case modal is already in DOM)
+        initializeModalHandlers();
     }
     
     if (viewModalElement) {
@@ -52,11 +60,291 @@ export function initializeExperimentModal(): void {
     }
 }
 
+// Store handler functions to prevent duplicate listeners
+let buttonClickHandler: ((e: MouseEvent) => void) | null = null;
+let menuClickHandler: ((e: MouseEvent) => void) | null = null;
+let outsideClickHandler: ((e: MouseEvent) => void) | null = null;
+
+/**
+ * Initializes event handlers for the experiment modal
+ */
+function initializeModalHandlers(): void {
+    // Data path dropdown button
+    const dropdownBtn = document.getElementById('dataPathDropdownBtn');
+    const dropdownMenu = document.getElementById('dataPathTemplates');
+    
+    if (!dropdownBtn || !dropdownMenu) {
+        // Elements not found - this is OK if modal hasn't been rendered yet
+        return;
+    }
+    
+    // Remove old listeners if they exist
+    if (buttonClickHandler) {
+        dropdownBtn.removeEventListener('click', buttonClickHandler);
+    }
+    if (menuClickHandler) {
+        dropdownMenu.removeEventListener('click', menuClickHandler);
+    }
+    if (outsideClickHandler) {
+        document.removeEventListener('click', outsideClickHandler);
+    }
+    
+    // Create new handler functions
+    buttonClickHandler = (e: MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Toggle dropdown visibility
+        const isVisible = dropdownMenu.classList.contains('show');
+        if (isVisible) {
+            dropdownMenu.classList.remove('show');
+        } else {
+            dropdownMenu.classList.add('show');
+        }
+    };
+    
+    menuClickHandler = (e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+        const dropdownItem = target.closest<HTMLAnchorElement>('.dropdown-item');
+        
+        if (dropdownItem) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const template = dropdownItem.getAttribute('data-template');
+            const user = dropdownItem.getAttribute('data-user');
+            
+            if (template) {
+                applyTemplateToDataPath(template, user);
+            }
+            
+            // Hide dropdown
+            dropdownMenu.classList.remove('show');
+        }
+    };
+    
+    outsideClickHandler = (e: MouseEvent) => {
+        const target = e.target as Node;
+        if (dropdownMenu.classList.contains('show') && 
+            !dropdownBtn.contains(target) && 
+            !dropdownMenu.contains(target)) {
+            dropdownMenu.classList.remove('show');
+        }
+    };
+    
+    // Add event listeners
+    dropdownBtn.addEventListener('click', buttonClickHandler);
+    dropdownMenu.addEventListener('click', menuClickHandler);
+    document.addEventListener('click', outsideClickHandler);
+    
+    // PVLogger file selection button
+    const selectFileBtn = document.getElementById('selectFileBtn');
+    const fileInput = document.getElementById('pvLoggerPath') as HTMLInputElement | null;
+    const fileDisplay = document.getElementById('pvLoggerPathDisplay') as HTMLInputElement | null;
+    const clearFileBtn = document.getElementById('clearFileBtn');
+    const pvLoggerPathValue = document.getElementById('pvLoggerPathValue') as HTMLInputElement | null;
+    
+    if (selectFileBtn && fileInput && fileDisplay) {
+        selectFileBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            const target = e.target as HTMLInputElement;
+            const file = target.files?.[0];
+            
+            if (file) {
+                fileDisplay.value = file.name;
+                if (clearFileBtn) {
+                    clearFileBtn.style.display = '';
+                }
+                
+                // Store file path in hidden input
+                if (pvLoggerPathValue) {
+                    pvLoggerPathValue.value = file.name;
+                }
+            }
+        });
+    }
+    
+    if (clearFileBtn && fileInput && fileDisplay) {
+        clearFileBtn.addEventListener('click', () => {
+            if (fileInput) {
+                fileInput.value = '';
+            }
+            fileDisplay.value = '';
+            clearFileBtn.style.display = 'none';
+            if (pvLoggerPathValue) {
+                pvLoggerPathValue.value = '';
+            }
+        });
+    }
+}
+
+/**
+ * Applies a template to the data path input, replacing placeholders
+ */
+function applyTemplateToDataPath(template: string, user: string | null): void {
+    const dataPathInput = document.getElementById('dataPath') as HTMLInputElement | null;
+    if (!dataPathInput) return;
+    
+    const templateValues = getTemplateValues(currentEditingExperiment);
+    
+    // Replace placeholders in template
+    let path = template;
+    
+    // Replace {year} with actual year (always available, defaults to current year)
+    path = path.replace(/\{year\}/g, templateValues.year.toString());
+    
+    // Replace {run} or {runNumber} with run number (use empty string if not available)
+    const runValue = templateValues.runNumber || '';
+    path = path.replace(/\{run\}/g, runValue);
+    path = path.replace(/\{runNumber\}/g, runValue);
+    
+    // Replace {user} or {userLastName} with user last name
+    // Prefer the user from technique, fallback to spokesperson's last name, then default
+    const userValue = user || templateValues.userLastName || 'user';
+    path = path.replace(/\{user\}/g, userValue);
+    path = path.replace(/\{userLastName\}/g, templateValues.userLastName || 'user');
+    
+    // Replace {esaf} or {experiment} with experiment number if available
+    if (currentEditingExperiment) {
+        const experiment = getExperimentDataFromRow(currentEditingExperiment);
+        if (experiment?.id) {
+            path = path.replace(/\{esaf\}/g, experiment.id);
+            path = path.replace(/\{experiment\}/g, experiment.id);
+        } else {
+            // If experiment ID not available, remove these placeholders
+            path = path.replace(/\{esaf\}/g, '');
+            path = path.replace(/\{experiment\}/g, '');
+        }
+    } else {
+        // If no experiment is being edited, remove these placeholders
+        path = path.replace(/\{esaf\}/g, '');
+        path = path.replace(/\{experiment\}/g, '');
+    }
+    
+    dataPathInput.value = path;
+}
+
+/**
+ * Populates the edit modal form with experiment data
+ */
+function populateEditModal(experiment: Experiment): void {
+    // Basic information
+    const experimentIdEl = document.getElementById('experimentId') as HTMLInputElement | null;
+    const titleEl = document.getElementById('experimentTitle') as HTMLInputElement | null;
+    const experimentNumberEl = document.getElementById('experimentNumber') as HTMLInputElement | null;
+    const proposalNumberEl = document.getElementById('proposalNumber') as HTMLInputElement | null;
+    
+    if (experimentIdEl) experimentIdEl.value = experiment.id || '';
+    if (titleEl) titleEl.value = experiment.title || '';
+    if (experimentNumberEl) experimentNumberEl.value = experiment.id || '';
+    if (proposalNumberEl) proposalNumberEl.value = experiment.proposal || '';
+    
+    // Data path
+    const dataPathEl = document.getElementById('dataPath') as HTMLInputElement | null;
+    if (dataPathEl) {
+        dataPathEl.value = isValidValue(experiment.folder) ? (experiment.folder as string) : '';
+    }
+    
+    // PVLogger path (if exists, show in display field)
+    const pvLoggerPathDisplay = document.getElementById('pvLoggerPathDisplay') as HTMLInputElement | null;
+    const pvLoggerPathValue = document.getElementById('pvLoggerPathValue') as HTMLInputElement | null;
+    const clearFileBtn = document.getElementById('clearFileBtn');
+    
+    // Note: PVLogger path might not be in experiment data
+    if (pvLoggerPathDisplay) {
+        pvLoggerPathDisplay.value = '';
+        pvLoggerPathDisplay.placeholder = 'No file selected';
+    }
+    if (pvLoggerPathValue) {
+        pvLoggerPathValue.value = '';
+    }
+    if (clearFileBtn) {
+        clearFileBtn.style.display = 'none';
+    }
+    
+    // Acknowledgments - need to check if experiment has acknowledgments
+    const acknowledgmentCheckboxes = document.querySelectorAll<HTMLInputElement>('.acknowledgment-checkbox');
+    acknowledgmentCheckboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    
+    const selectedAcknowledgmentsText = document.getElementById('selectedAcknowledgmentsText');
+    if (selectedAcknowledgmentsText) {
+        selectedAcknowledgmentsText.textContent = 'No acknowledgments selected';
+        selectedAcknowledgmentsText.className = 'text-muted';
+    }
+    
+    const selectedAcknowledgmentsHidden = document.getElementById('selectedAcknowledgments') as HTMLInputElement | null;
+    if (selectedAcknowledgmentsHidden) {
+        selectedAcknowledgmentsHidden.value = '';
+    }
+    
+    // DOI options - check if experiment already has a DOI
+    const createDoiEl = document.getElementById('createDoi') as HTMLInputElement | null;
+    const draftDoiEl = document.getElementById('draftDoi') as HTMLInputElement | null;
+    
+    if (createDoiEl) {
+        // If experiment already has a DOI, uncheck create DOI
+        createDoiEl.checked = !isValidValue(experiment.sees_doi);
+    }
+    
+    if (draftDoiEl) {
+        draftDoiEl.checked = false;
+    }
+    
+    // Clear validation message
+    const pathValidationMessage = document.getElementById('pathValidationMessage');
+    if (pathValidationMessage) {
+        pathValidationMessage.textContent = '';
+        pathValidationMessage.className = 'small';
+    }
+}
+
 /**
  * Opens experiment modal for viewing or editing
  */
 export function openExperimentModal(experimentId: string, _mode: 'edit' | 'view' = 'edit'): void {
     setCurrentEditingExperiment(experimentId);
+    
+    // Get experiment data from the table row
+    const row = document.querySelector<HTMLTableRowElement>(`tr[data-experiment-id="${experimentId}"]`);
+    if (row) {
+        try {
+            // Get full experiment data from the data attribute
+            const experimentDataStr = row.getAttribute('data-experiment-data');
+            if (experimentDataStr) {
+                const experiment: Experiment = JSON.parse(experimentDataStr);
+                populateEditModal(experiment);
+            } else {
+                // Fallback: populate with basic data from DOM
+                const folderAttr = row.getAttribute('data-user-folder');
+                const experiment: Partial<Experiment> = {
+                    id: row.querySelector('.experiment-id')?.textContent?.trim() || '',
+                    title: row.querySelector('.experiment-title-text')?.textContent?.trim() || '',
+                    proposal: row.querySelector('.experiment-proposal')?.textContent?.trim() || '',
+                    folder: folderAttr || undefined
+                };
+                populateEditModal(experiment as Experiment);
+            }
+        } catch (error) {
+            console.error('Error parsing experiment data:', error);
+            // Fallback: populate with basic data from DOM
+            const folderAttr = row.getAttribute('data-user-folder');
+            const experiment: Partial<Experiment> = {
+                id: row.querySelector('.experiment-id')?.textContent?.trim() || '',
+                title: row.querySelector('.experiment-title-text')?.textContent?.trim() || '',
+                proposal: row.querySelector('.experiment-proposal')?.textContent?.trim() || '',
+                folder: folderAttr || undefined
+            };
+            populateEditModal(experiment as Experiment);
+        }
+    }
+    
+    // Ensure handlers are initialized before showing modal
+    initializeModalHandlers();
     
     if (experimentModalInstance) {
         experimentModalInstance.show();

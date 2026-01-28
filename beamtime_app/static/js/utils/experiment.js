@@ -67,9 +67,14 @@ export function getTemplateValues(experimentId) {
     const experiment = getExperimentDataFromRow(experimentId);
     if (!experiment)
         return defaults;
+    // Handle run_id as either string or number
+    let runNumber = '';
+    if (experiment.run_id !== undefined && experiment.run_id !== null) {
+        runNumber = String(experiment.run_id);
+    }
     return {
         year: extractYear(experiment.start_date),
-        runNumber: experiment.run_id || '',
+        runNumber: runNumber,
         userLastName: extractLastName(experiment.spokesperson_name)
     };
 }

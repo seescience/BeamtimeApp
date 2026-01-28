@@ -172,7 +172,7 @@
                                             <i class="bi bi-check2-circle"></i>
                                         </button>
                                     </div>
-                                    <div class="dropdown-menu position-absolute" id="dataPathTemplates">
+                                    <div class="dropdown-menu position-absolute start-0 w-100 mt-1" id="dataPathTemplates" style="max-height: 300px; overflow-y: auto;">
                                         {% for technique in techniques %}
                                         {% if technique.base_dir %}
                                         <a class="dropdown-item" href="#" data-template="{{ technique.base_dir }}" data-user="{{ technique.user_name }}">{{ technique.base_dir }}</a>

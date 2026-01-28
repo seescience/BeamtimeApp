@@ -25,7 +25,7 @@ export interface Experiment {
     proposal?: string;
     start_date?: string;
     end_date?: string;
-    run_id?: string;
+    run_id?: string | number;
     spokesperson_name?: string;
     spokesperson_email?: string;
     beamline_name?: string;

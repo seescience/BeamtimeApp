@@ -1674,3 +1674,7 @@ input[type="checkbox"]:checked::after {
     overflow-y: auto;
 }
 
+#dataPathTemplates.show {
+    display: block;
+}
+
