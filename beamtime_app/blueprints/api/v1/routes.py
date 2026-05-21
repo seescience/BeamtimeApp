@@ -14,7 +14,7 @@
 
 import os
 
-from flask import Blueprint, flash, jsonify, render_template, request
+from flask import Blueprint, flash, jsonify, render_template, request, send_file, abort
 from flask_login import login_required
 
 from beamtime_app.crud import add_to_queue, get_all_entries, get_experiments, get_info_value
@@ -149,6 +149,21 @@ def get_pvlog_templates() -> str:
 
     templates.sort(key=lambda t: t["label"])
     return jsonify(templates)
+
+
+@api_v1.route("/serve_pdf", methods=["GET"])
+@login_required
+def serve_pdf() -> str:
+    """Serves a PDF file from the server filesystem."""
+    path = request.args.get("path", "")
+    if not path:
+        abort(400)
+
+    abs_path = os.path.abspath(f"/{path}")
+    if not os.path.isfile(abs_path):
+        abort(404)
+
+    return send_file(abs_path, mimetype="application/pdf")
 
 
 @api_v1.route("/upload_pvlogger_file", methods=["POST"])

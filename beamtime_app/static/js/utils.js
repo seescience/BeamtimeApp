@@ -879,7 +879,8 @@ function populateViewModalFull(experiment) {
     // ESAF PDF with link
     if (esafPdfEl) {
         if (experiment.esaf_pdf_file && experiment.esaf_pdf_file !== 'N/A') {
-            esafPdfEl.innerHTML = `<a href="${experiment.esaf_pdf_file}" target="_blank">View PDF</a>`;
+            const pdfUrl = `/api/v1/serve_pdf?path=${encodeURIComponent(experiment.esaf_pdf_file)}`;
+            esafPdfEl.innerHTML = `<a href="${pdfUrl}" target="_blank">View PDF</a>`;
         } else {
             esafPdfEl.textContent = 'N/A';
         }
