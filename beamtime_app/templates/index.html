@@ -43,7 +43,7 @@
         <h5 class="experiments-title">Experiments</h5>
         
         <!-- Inline Filters -->
-        <form id="filterForm" method="get" action="/" class="inline-filters">
+        <form id="filterForm" method="get" action="/" class="inline-filters" autocomplete="off">
             <input type="search" id="searchInput" name="search" class="inline-filter-search" 
                    placeholder="Search experiments..." 
                    value="{{ request.args.get('search', '') }}">
@@ -355,4 +355,12 @@
     </div>
 
 </div>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('runSelect').value = '{{ selected_run or "" }}';
+        document.getElementById('beamlineSelect').value = '{{ selected_beamline or "" }}';
+        document.getElementById('techniqueSelect').value = '{{ selected_technique or "" }}';
+        document.getElementById('statusSelect').value = '{{ selected_status or "" }}';
+    });
+</script>
 {% endblock content %}

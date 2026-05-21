@@ -22,6 +22,7 @@ from beamtime_app.models import (
     APSBeamline,
     BaseModel,
     Experiment,
+    Info,
     Person,
     ProcessStatus,
     ProcessStatusEnum,
@@ -30,7 +31,7 @@ from beamtime_app.models import (
 )
 from beamtime_app.utils import format_experiment_data, to_dictionary
 
-__all__ = ["add_to_queue", "get_all_entries", "get_experiments"]
+__all__ = ["add_to_queue", "get_all_entries", "get_experiments", "get_info_value"]
 
 
 def _select_all(db: Session, model: BaseModel) -> list[BaseModel]:
@@ -50,6 +51,19 @@ def get_all_entries(model: BaseModel) -> list[dict[str, Any]]:
             print(e)
 
     return entries
+
+
+def get_info_value(key: str) -> str | None:
+    """Returns the value for a given key from the info table."""
+    value = None
+
+    with session_scope() as session:
+        try:
+            value = session.execute(select(Info.value).where(Info.key == key)).scalar_one_or_none()
+        except Exception as e:
+            print(e)
+
+    return value
 
 
 def get_experiments(

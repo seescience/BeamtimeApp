@@ -17,7 +17,7 @@ import os
 from flask import Blueprint, flash, jsonify, render_template, request
 from flask_login import login_required
 
-from beamtime_app.crud import add_to_queue, get_all_entries, get_experiments
+from beamtime_app.crud import add_to_queue, get_all_entries, get_experiments, get_info_value
 from beamtime_app.models import Acknowledgment, APSBeamline, Info, ProcessStatus, Run, Technique
 from beamtime_app.utils import format_info_modification_time
 
@@ -28,7 +28,12 @@ api_v1 = Blueprint("api_v1", __name__, url_prefix="/api/v1")
 @api_v1.route("/")
 @login_required
 def home() -> str:
-    selected_run = request.args.get("run", type=int)
+    current_run_id = get_info_value("current_run_id")
+    default_run = int(current_run_id) if current_run_id else None
+
+    run_arg = request.args.get("run")
+    selected_run = int(run_arg) if run_arg else (None if "run" in request.args else default_run)
+
     selected_beamline = request.args.get("beamline", type=int)
     selected_technique = request.args.get("technique", type=int)
     selected_status = request.args.get("status", type=int)
