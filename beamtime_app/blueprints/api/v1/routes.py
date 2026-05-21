@@ -129,6 +129,28 @@ def validate_data_path_api() -> str:
         return jsonify({"error": f"Error validating path: {str(e)}"}), 500
 
 
+@api_v1.route("/get_pvlog_templates", methods=["GET"])
+@login_required
+def get_pvlog_templates() -> str:
+    """API endpoint to fetch available PVLogger templates from the templates directory."""
+    templates_dir = get_info_value("pvlog_templates_directory")
+
+    if not templates_dir or not os.path.isdir(templates_dir):
+        return jsonify([])
+
+    templates = []
+    for beamline_dir in os.scandir(templates_dir):
+        if not beamline_dir.is_dir():
+            continue
+        for entry in os.scandir(beamline_dir.path):
+            if entry.is_file() and entry.name.lower().endswith((".yaml", ".yml")):
+                label = f"{beamline_dir.name}-{entry.name}"
+                templates.append({"label": label, "path": entry.path})
+
+    templates.sort(key=lambda t: t["label"])
+    return jsonify(templates)
+
+
 @api_v1.route("/upload_pvlogger_file", methods=["POST"])
 @login_required
 def upload_pvlogger_file() -> str:

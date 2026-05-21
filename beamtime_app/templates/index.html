@@ -185,15 +185,21 @@
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <label for="pvLoggerPath" class="form-label">PVLogger Path</label>
+                                <label for="pvLoggerTemplateSelect" class="form-label">PVLogger Template</label>
                                 <div class="input-group">
-                                    <input type="file" class="form-control" id="pvLoggerPath" name="pvLoggerPath" accept=".yaml,.yml" style="display: none;">
-                                    <input type="text" class="form-control" id="pvLoggerPathDisplay" placeholder="No file selected" readonly>
-                                    <button class="btn btn-outline-danger" type="button" id="clearFileBtn" title="Clear selection" style="display: none;">
-                                        <i class="bi bi-x"></i>
+                                    <select class="form-select" id="pvLoggerTemplateSelect">
+                                        <option value="">Select a template...</option>
+                                    </select>
+                                    <button class="btn btn-outline-secondary" type="button" id="selectFileBtn" title="Upload YAML file">
+                                        <i class="bi bi-upload"></i>
                                     </button>
-                                    <button class="btn btn-outline-secondary" type="button" id="selectFileBtn" title="Select YAML file">
-                                        <i class="bi bi-folder2-open"></i>
+                                </div>
+                                <input type="file" id="pvLoggerPath" name="pvLoggerPath" accept=".yaml,.yml" style="display: none;">
+                                <div class="mt-1" id="pvLoggerUploadedLabel" style="display: none;">
+                                    <span class="small text-success"><i class="bi bi-check-circle"></i> Uploaded: </span>
+                                    <span class="small" id="pvLoggerUploadedName"></span>
+                                    <button class="btn btn-link btn-sm p-0 ms-1 text-danger" type="button" id="clearFileBtn" title="Clear upload">
+                                        <i class="bi bi-x"></i>
                                     </button>
                                 </div>
                                 <input type="hidden" id="pvLoggerPathValue" name="pvLoggerPathValue">

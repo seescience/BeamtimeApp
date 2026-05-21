@@ -268,73 +268,90 @@ function initializeDoiCheckboxes() {
     createDoiCheckbox.addEventListener('change', toggleDraftDoiVisibility);
 }
 
+// Fetch and populate pvlog template dropdown
+function loadPVLoggerTemplates() {
+    const select = document.getElementById('pvLoggerTemplateSelect');
+    if (!select) return;
+
+    fetch('/api/v1/get_pvlog_templates')
+        .then(response => response.json())
+        .then(templates => {
+            select.innerHTML = '<option value="">Select a template...</option>';
+            templates.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t.path;
+                opt.textContent = t.label;
+                select.appendChild(opt);
+            });
+        })
+        .catch(() => {
+            select.innerHTML = '<option value="">No templates available</option>';
+        });
+}
+
 // Initialize PVLogger file picker
 function initializePVLoggerFilePicker() {
     const fileInput = document.getElementById('pvLoggerPath');
-    const displayInput = document.getElementById('pvLoggerPathDisplay');
     const selectBtn = document.getElementById('selectFileBtn');
     const clearBtn = document.getElementById('clearFileBtn');
     const hiddenInput = document.getElementById('pvLoggerPathValue');
-    
-    if (!fileInput || !displayInput || !selectBtn || !clearBtn || !hiddenInput) return;
-    
-    // Handle button click to open file dialog
+    const templateSelect = document.getElementById('pvLoggerTemplateSelect');
+
+    if (!fileInput || !selectBtn || !hiddenInput || !templateSelect) return;
+
+    // When template dropdown changes, set the hidden value and clear any upload
+    templateSelect.addEventListener('change', () => {
+        hiddenInput.value = templateSelect.value;
+        clearUploadedFile();
+    });
+
+    // Handle upload button click
     selectBtn.addEventListener('click', () => {
         fileInput.click();
     });
-    
-    // Handle clear button click
-    clearBtn.addEventListener('click', () => {
-        clearFileSelection();
-    });
-    
+
+    // Handle clear upload button
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            clearFileSelection();
+        });
+    }
+
     // Handle file selection
     fileInput.addEventListener('change', (event) => {
         const file = event.target.files[0];
         if (file) {
-            // Validate file extension
             const fileName = file.name.toLowerCase();
             if (!fileName.endsWith('.yaml') && !fileName.endsWith('.yml')) {
                 showNotification('error', 'Please select a YAML file (.yaml or .yml)');
                 fileInput.value = '';
-                displayInput.value = '';
-                hiddenInput.value = '';
                 return;
             }
-            
-            // Upload the file automatically
             uploadPVLoggerFile(file);
-        } else {
-            displayInput.value = '';
-            hiddenInput.value = '';
         }
     });
 }
 
 // Upload PVLogger file
 function uploadPVLoggerFile(file) {
-    const displayInput = document.getElementById('pvLoggerPathDisplay');
-    const clearBtn = document.getElementById('clearFileBtn');
+    const uploadedLabel = document.getElementById('pvLoggerUploadedLabel');
+    const uploadedName = document.getElementById('pvLoggerUploadedName');
     const hiddenInput = document.getElementById('pvLoggerPathValue');
     const selectBtn = document.getElementById('selectFileBtn');
+    const templateSelect = document.getElementById('pvLoggerTemplateSelect');
     const esafNumber = document.getElementById('experimentNumber').value;
-    
+
     if (!esafNumber) {
         showNotification('error', 'ESAF number is required for file upload');
-        clearFileSelection();
         return;
     }
-    
-    // Show uploading state
-    displayInput.value = 'Uploading...';
+
     selectBtn.disabled = true;
-    
-    // Create FormData for file upload
+
     const formData = new FormData();
     formData.append('file', file);
     formData.append('esaf_number', esafNumber);
-    
-    // Upload the file
+
     fetch('/api/v1/upload_pvlogger_file', {
         method: 'POST',
         body: formData
@@ -342,13 +359,11 @@ function uploadPVLoggerFile(file) {
     .then(response => response.json())
     .then(result => {
         if (result.success) {
-            // Display the uploaded file path
-            displayInput.value = result.filename;
             hiddenInput.value = result.path;
-            clearBtn.style.display = 'block';
-            
+            if (templateSelect) templateSelect.value = '';
+            if (uploadedName) uploadedName.textContent = result.filename;
+            if (uploadedLabel) uploadedLabel.style.display = 'block';
             showNotification('success', result.message);
-            console.log('File uploaded successfully:', result.path);
         } else {
             showNotification('error', result.error || 'Upload failed');
             clearFileSelection();
@@ -364,34 +379,37 @@ function uploadPVLoggerFile(file) {
     });
 }
 
-// Clear file selection
-function clearFileSelection() {
+// Clear uploaded file (keep template dropdown intact)
+function clearUploadedFile() {
     const fileInput = document.getElementById('pvLoggerPath');
-    const displayInput = document.getElementById('pvLoggerPathDisplay');
-    const clearBtn = document.getElementById('clearFileBtn');
-    const hiddenInput = document.getElementById('pvLoggerPathValue');
-    const selectBtn = document.getElementById('selectFileBtn');
-    
+    const uploadedLabel = document.getElementById('pvLoggerUploadedLabel');
+    const uploadedName = document.getElementById('pvLoggerUploadedName');
+
     if (fileInput) fileInput.value = '';
-    if (displayInput) displayInput.value = '';
-    if (hiddenInput) hiddenInput.value = '';
-    if (clearBtn) clearBtn.style.display = 'none';
-    if (selectBtn) selectBtn.disabled = false;
-    
-    console.log('PVLogger file selection cleared');
+    if (uploadedLabel) uploadedLabel.style.display = 'none';
+    if (uploadedName) uploadedName.textContent = '';
 }
 
-// Reset PVLogger file picker
-function resetPVLoggerFilePicker() {
-    const fileInput = document.getElementById('pvLoggerPath');
-    const displayInput = document.getElementById('pvLoggerPathDisplay');
-    const clearBtn = document.getElementById('clearFileBtn');
+// Clear file selection and reset hidden value
+function clearFileSelection() {
     const hiddenInput = document.getElementById('pvLoggerPathValue');
-    
-    if (fileInput) fileInput.value = '';
-    if (displayInput) displayInput.value = '';
+    const templateSelect = document.getElementById('pvLoggerTemplateSelect');
+    const selectBtn = document.getElementById('selectFileBtn');
+
+    clearUploadedFile();
     if (hiddenInput) hiddenInput.value = '';
-    if (clearBtn) clearBtn.style.display = 'none';
+    if (templateSelect) templateSelect.value = '';
+    if (selectBtn) selectBtn.disabled = false;
+}
+
+// Reset PVLogger section on modal close
+function resetPVLoggerFilePicker() {
+    const templateSelect = document.getElementById('pvLoggerTemplateSelect');
+    const hiddenInput = document.getElementById('pvLoggerPathValue');
+
+    clearUploadedFile();
+    if (templateSelect) templateSelect.value = '';
+    if (hiddenInput) hiddenInput.value = '';
 }
 
 // Initialize the experiment modals
@@ -420,6 +438,7 @@ function initializeExperimentModal() {
     
     // Initialize file picker for PVLogger Path
     initializePVLoggerFilePicker();
+    loadPVLoggerTemplates();
     
     // Initialize DOI checkbox interactions
     initializeDoiCheckboxes();
