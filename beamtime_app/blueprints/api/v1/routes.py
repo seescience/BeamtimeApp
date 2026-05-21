@@ -14,10 +14,10 @@
 
 import os
 
-from flask import Blueprint, flash, jsonify, render_template, request
+from flask import Blueprint, flash, jsonify, render_template, request, send_file, abort
 from flask_login import login_required
 
-from beamtime_app.crud import add_to_queue, get_all_entries, get_experiments
+from beamtime_app.crud import add_to_queue, get_all_entries, get_experiments, get_info_value
 from beamtime_app.models import Acknowledgment, APSBeamline, Info, ProcessStatus, Run, Technique
 from beamtime_app.utils import format_info_modification_time
 
@@ -28,7 +28,12 @@ api_v1 = Blueprint("api_v1", __name__, url_prefix="/api/v1")
 @api_v1.route("/")
 @login_required
 def home() -> str:
-    selected_run = request.args.get("run", type=int)
+    current_run_id = get_info_value("current_run_id")
+    default_run = int(current_run_id) if current_run_id else None
+
+    run_arg = request.args.get("run")
+    selected_run = int(run_arg) if run_arg else (None if "run" in request.args else default_run)
+
     selected_beamline = request.args.get("beamline", type=int)
     selected_technique = request.args.get("technique", type=int)
     selected_status = request.args.get("status", type=int)
@@ -122,6 +127,43 @@ def validate_data_path_api() -> str:
         )
     except Exception as e:
         return jsonify({"error": f"Error validating path: {str(e)}"}), 500
+
+
+@api_v1.route("/get_pvlog_templates", methods=["GET"])
+@login_required
+def get_pvlog_templates() -> str:
+    """API endpoint to fetch available PVLogger templates from the templates directory."""
+    templates_dir = get_info_value("pvlog_templates_directory")
+
+    if not templates_dir or not os.path.isdir(templates_dir):
+        return jsonify([])
+
+    templates = []
+    for beamline_dir in os.scandir(templates_dir):
+        if not beamline_dir.is_dir():
+            continue
+        for entry in os.scandir(beamline_dir.path):
+            if entry.is_file() and entry.name.lower().endswith((".yaml", ".yml")):
+                label = f"{beamline_dir.name}-{entry.name}"
+                templates.append({"label": label, "path": entry.path})
+
+    templates.sort(key=lambda t: t["label"])
+    return jsonify(templates)
+
+
+@api_v1.route("/serve_pdf", methods=["GET"])
+@login_required
+def serve_pdf() -> str:
+    """Serves a PDF file from the server filesystem."""
+    path = request.args.get("path", "")
+    if not path:
+        abort(400)
+
+    abs_path = os.path.abspath(f"/{path}")
+    if not os.path.isfile(abs_path):
+        abort(404)
+
+    return send_file(abs_path, mimetype="application/pdf")
 
 
 @api_v1.route("/upload_pvlogger_file", methods=["POST"])

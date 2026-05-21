@@ -43,7 +43,7 @@
         <h5 class="experiments-title">Experiments</h5>
         
         <!-- Inline Filters -->
-        <form id="filterForm" method="get" action="/" class="inline-filters">
+        <form id="filterForm" method="get" action="/" class="inline-filters" autocomplete="off">
             <input type="search" id="searchInput" name="search" class="inline-filter-search" 
                    placeholder="Search experiments..." 
                    value="{{ request.args.get('search', '') }}">
@@ -185,15 +185,21 @@
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <label for="pvLoggerPath" class="form-label">PVLogger Path</label>
+                                <label for="pvLoggerTemplateSelect" class="form-label">PVLogger Template</label>
                                 <div class="input-group">
-                                    <input type="file" class="form-control" id="pvLoggerPath" name="pvLoggerPath" accept=".yaml,.yml" style="display: none;">
-                                    <input type="text" class="form-control" id="pvLoggerPathDisplay" placeholder="No file selected" readonly>
-                                    <button class="btn btn-outline-danger" type="button" id="clearFileBtn" title="Clear selection" style="display: none;">
-                                        <i class="bi bi-x"></i>
+                                    <select class="form-select" id="pvLoggerTemplateSelect">
+                                        <option value="">Select a template...</option>
+                                    </select>
+                                    <button class="btn btn-outline-secondary" type="button" id="selectFileBtn" title="Upload YAML file">
+                                        <i class="bi bi-upload"></i>
                                     </button>
-                                    <button class="btn btn-outline-secondary" type="button" id="selectFileBtn" title="Select YAML file">
-                                        <i class="bi bi-folder2-open"></i>
+                                </div>
+                                <input type="file" id="pvLoggerPath" name="pvLoggerPath" accept=".yaml,.yml" style="display: none;">
+                                <div class="mt-1" id="pvLoggerUploadedLabel" style="display: none;">
+                                    <span class="small text-success"><i class="bi bi-check-circle"></i> Uploaded: </span>
+                                    <span class="small" id="pvLoggerUploadedName"></span>
+                                    <button class="btn btn-link btn-sm p-0 ms-1 text-danger" type="button" id="clearFileBtn" title="Clear upload">
+                                        <i class="bi bi-x"></i>
                                     </button>
                                 </div>
                                 <input type="hidden" id="pvLoggerPathValue" name="pvLoggerPathValue">
@@ -266,58 +272,60 @@
                 </div>
                 <div class="modal-body">
                     <div class="container-fluid">
-                        <!-- Basic Information Row -->
+                        <!-- Title Row -->
                         <div class="row mb-3">
-                            <div class="col-md-6">
+                            <div class="col-md-12">
                                 <div class="form-label fw-bold">Title</div>
                                 <div id="detailViewTitle"></div>
                             </div>
-                            <div class="col-md-3">
-                                <div class="form-label fw-bold">ESAF</div>
-                                <div id="detailViewExperimentNumber"></div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-label fw-bold">Proposal</div>
-                                <div id="detailViewProposal"></div>
-                            </div>
                         </div>
-                        
-                        <!-- Status and Beamline Row -->
+
+                        <!-- Three Column Info Row -->
                         <div class="row mb-3">
-                            <div class="col-md-6">
-                                <div class="form-label fw-bold">Status</div>
-                                <div id="detailViewStatus"></div>
+                            <div class="col-md-4">
+                                <div class="mb-2">
+                                    <div class="form-label fw-bold">Status</div>
+                                    <div id="detailViewStatus"></div>
+                                </div>
+                                <div class="mb-2">
+                                    <div class="form-label fw-bold">Start Date</div>
+                                    <div id="detailViewStartDate"></div>
+                                </div>
+                                <div class="mb-2">
+                                    <div class="form-label fw-bold">Spokesperson</div>
+                                    <div id="detailViewSpokesperson"></div>
+                                </div>
                             </div>
-                            <div class="col-md-6">
-                                <div class="form-label fw-bold">Beamline</div>
-                                <div id="detailViewBeamline"></div>
+                            <div class="col-md-4">
+                                <div class="mb-2">
+                                    <div class="form-label fw-bold">Beamline</div>
+                                    <div id="detailViewBeamline"></div>
+                                </div>
+                                <div class="mb-2">
+                                    <div class="form-label fw-bold">End Date</div>
+                                    <div id="detailViewEndDate"></div>
+                                </div>
+                                <div class="mb-2">
+                                    <div class="form-label fw-bold">Beamline Contact</div>
+                                    <div id="detailViewBeamlineContact"></div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-2">
+                                    <div class="form-label fw-bold">Proposal</div>
+                                    <div id="detailViewProposal"></div>
+                                </div>
+                                <div class="mb-2">
+                                    <div class="form-label fw-bold">ESAF</div>
+                                    <div id="detailViewExperimentNumber"></div>
+                                </div>
+                                <div class="mb-2">
+                                    <div class="form-label fw-bold">ESAF PDF</div>
+                                    <div id="detailViewEsafPdf"></div>
+                                </div>
                             </div>
                         </div>
-                        
-                        <!-- Dates Row -->
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <div class="form-label fw-bold">Start Date</div>
-                                <div id="detailViewStartDate"></div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-label fw-bold">End Date</div>
-                                <div id="detailViewEndDate"></div>
-                            </div>
-                        </div>
-                        
-                        <!-- Personnel Row -->
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <div class="form-label fw-bold">Spokesperson</div>
-                                <div id="detailViewSpokesperson"></div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-label fw-bold">Beamline Contact</div>
-                                <div id="detailViewBeamlineContact"></div>
-                            </div>
-                        </div>
-                        
+
                         <!-- Description Row -->
                         <div class="row mb-3">
                             <div class="col-md-12">
@@ -325,24 +333,28 @@
                                 <div id="detailViewDescription" class="text-break"></div>
                             </div>
                         </div>
-                        
-                        <!-- Data Path Row -->
+
+                        <!-- Data Path and PVLog Row -->
                         <div class="row mb-3">
-                            <div class="col-md-12">
+                            <div class="col-md-6">
                                 <div class="form-label fw-bold">Data Path</div>
                                 <div id="detailViewDataPath" class="font-monospace text-break"></div>
                             </div>
+                            <div class="col-md-6">
+                                <div class="form-label fw-bold">PVLog File</div>
+                                <div id="detailViewPvlogFile" class="font-monospace text-break"></div>
+                            </div>
                         </div>
-                        
-                        <!-- DOI and PDF Row -->
+
+                        <!-- DOI Row -->
                         <div class="row mb-2">
                             <div class="col-md-6">
-                                <div class="form-label fw-bold">DOI</div>
-                                <div id="detailViewDoi"></div>
+                                <div class="form-label fw-bold">SEES DOI</div>
+                                <div id="detailViewSeesDoi"></div>
                             </div>
                             <div class="col-md-6">
-                                <div class="form-label fw-bold">ESAF PDF</div>
-                                <div id="detailViewEsafPdf"></div>
+                                <div class="form-label fw-bold">APS DOI</div>
+                                <div id="detailViewApsDoi"></div>
                             </div>
                         </div>
                     </div>
@@ -355,4 +367,12 @@
     </div>
 
 </div>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('runSelect').value = '{{ selected_run or "" }}';
+        document.getElementById('beamlineSelect').value = '{{ selected_beamline or "" }}';
+        document.getElementById('techniqueSelect').value = '{{ selected_technique or "" }}';
+        document.getElementById('statusSelect').value = '{{ selected_status or "" }}';
+    });
+</script>
 {% endblock content %}

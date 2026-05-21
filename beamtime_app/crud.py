@@ -22,6 +22,7 @@ from beamtime_app.models import (
     APSBeamline,
     BaseModel,
     Experiment,
+    Info,
     Person,
     ProcessStatus,
     ProcessStatusEnum,
@@ -30,7 +31,7 @@ from beamtime_app.models import (
 )
 from beamtime_app.utils import format_experiment_data, to_dictionary
 
-__all__ = ["add_to_queue", "get_all_entries", "get_experiments"]
+__all__ = ["add_to_queue", "get_all_entries", "get_experiments", "get_info_value"]
 
 
 def _select_all(db: Session, model: BaseModel) -> list[BaseModel]:
@@ -50,6 +51,19 @@ def get_all_entries(model: BaseModel) -> list[dict[str, Any]]:
             print(e)
 
     return entries
+
+
+def get_info_value(key: str) -> str | None:
+    """Returns the value for a given key from the info table."""
+    value = None
+
+    with session_scope() as session:
+        try:
+            value = session.execute(select(Info.value).where(Info.key == key)).scalar_one_or_none()
+        except Exception as e:
+            print(e)
+
+    return value
 
 
 def get_experiments(
@@ -86,7 +100,9 @@ def get_experiments(
                     Experiment.start_date,
                     Experiment.end_date,
                     Experiment.sees_doi,
+                    Experiment.aps_doi,
                     Experiment.esaf_pdf_file,
+                    Experiment.pvlog_file,
                     # Person information
                     Spokesperson.first_name.label("spokesperson_first_name"),
                     Spokesperson.last_name.label("spokesperson_last_name"),
@@ -127,7 +143,9 @@ def get_experiments(
                     "start_date": result.start_date,
                     "end_date": result.end_date,
                     "sees_doi": result.sees_doi,
+                    "aps_doi": result.aps_doi,
                     "esaf_pdf_file": result.esaf_pdf_file,
+                    "pvlog_file": result.pvlog_file,
                     # Person information
                     "spokesperson_name": f"{result.spokesperson_first_name or ''} {result.spokesperson_last_name or ''}".strip() or None,
                     "spokesperson_email": result.spokesperson_email,

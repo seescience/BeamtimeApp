@@ -184,6 +184,7 @@ class Experiment(BASE, BaseModel):
     end_date: Mapped[datetime.datetime] = mapped_column(DateTime)
     folder: Mapped[str] = mapped_column(Text)
     sees_doi: Mapped[str] = mapped_column(Text)
+    aps_doi: Mapped[str] = mapped_column(Text)
     esaf_pdf_file: Mapped[str] = mapped_column(Text)
     proposal_pdf_file: Mapped[str] = mapped_column(Text)
     pvlog_file: Mapped[str] = mapped_column(Text)
@@ -207,6 +208,7 @@ class Experiment(BASE, BaseModel):
             "end_date": self.end_date,
             "folder": self.folder,
             "sees_doi": self.sees_doi,
+            "aps_doi": self.aps_doi,
             "esaf_pdf_file": self.esaf_pdf_file,
             "proposal_pdf_file": self.proposal_pdf_file,
             "pvlog_file": self.pvlog_file,
