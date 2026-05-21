@@ -719,7 +719,8 @@ function populateViewModalBasic(title, experimentNumber, proposal, statusBadge, 
     const endDateEl = document.getElementById('detailViewEndDate');
     const spokespersonEl = document.getElementById('detailViewSpokesperson');
     const beamlineContactEl = document.getElementById('detailViewBeamlineContact');
-    const doiEl = document.getElementById('detailViewDoi');
+    const seesDoiEl = document.getElementById('detailViewSeesDoi');
+    const apsDoiEl = document.getElementById('detailViewApsDoi');
     const esafPdfEl = document.getElementById('detailViewEsafPdf');
 
     if (titleEl) titleEl.textContent = title || 'N/A';
@@ -764,7 +765,8 @@ function populateViewModalFull(experiment) {
     const endDateEl = document.getElementById('detailViewEndDate');
     const spokespersonEl = document.getElementById('detailViewSpokesperson');
     const beamlineContactEl = document.getElementById('detailViewBeamlineContact');
-    const doiEl = document.getElementById('detailViewDoi');
+    const seesDoiEl = document.getElementById('detailViewSeesDoi');
+    const apsDoiEl = document.getElementById('detailViewApsDoi');
     const esafPdfEl = document.getElementById('detailViewEsafPdf');
 
     if (titleEl) titleEl.textContent = experiment.title || 'N/A';
@@ -827,12 +829,21 @@ function populateViewModalFull(experiment) {
         }
     }
     
-    // DOI with link
-    if (doiEl) {
+    // SEES DOI with link
+    if (seesDoiEl) {
         if (experiment.sees_doi && experiment.sees_doi !== 'N/A') {
-            doiEl.innerHTML = `<a href="https://doi.org/${experiment.sees_doi}" target="_blank">${experiment.sees_doi}</a>`;
+            seesDoiEl.innerHTML = `<a href="https://doi.org/${experiment.sees_doi}" target="_blank">${experiment.sees_doi}</a>`;
         } else {
-            doiEl.textContent = 'N/A';
+            seesDoiEl.textContent = 'N/A';
+        }
+    }
+
+    // APS DOI with link
+    if (apsDoiEl) {
+        if (experiment.aps_doi && experiment.aps_doi !== 'N/A') {
+            apsDoiEl.innerHTML = `<a href="https://doi.org/${experiment.aps_doi}" target="_blank">${experiment.aps_doi}</a>`;
+        } else {
+            apsDoiEl.textContent = 'N/A';
         }
     }
     

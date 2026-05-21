@@ -100,6 +100,7 @@ def get_experiments(
                     Experiment.start_date,
                     Experiment.end_date,
                     Experiment.sees_doi,
+                    Experiment.aps_doi,
                     Experiment.esaf_pdf_file,
                     # Person information
                     Spokesperson.first_name.label("spokesperson_first_name"),
@@ -141,6 +142,7 @@ def get_experiments(
                     "start_date": result.start_date,
                     "end_date": result.end_date,
                     "sees_doi": result.sees_doi,
+                    "aps_doi": result.aps_doi,
                     "esaf_pdf_file": result.esaf_pdf_file,
                     # Person information
                     "spokesperson_name": f"{result.spokesperson_first_name or ''} {result.spokesperson_last_name or ''}".strip() or None,
