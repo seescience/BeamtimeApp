@@ -547,6 +547,31 @@ function loadExperimentData(experimentId, mode = 'view') {
     
     // Reset acknowledgments and PVLogger path
     resetPVLoggerFilePicker();
+
+    // Pre-select pvlog_file from experiment data if available
+    const experimentDataStr = row.getAttribute('data-experiment-data');
+    if (experimentDataStr) {
+        try {
+            const experiment = JSON.parse(experimentDataStr);
+            if (experiment.pvlog_file && experiment.pvlog_file !== 'N/A') {
+                const templateSelect = document.getElementById('pvLoggerTemplateSelect');
+                const hiddenInput = document.getElementById('pvLoggerPathValue');
+                if (templateSelect) {
+                    const matchingOption = templateSelect.querySelector(`option[value="${experiment.pvlog_file}"]`);
+                    if (matchingOption) {
+                        templateSelect.value = experiment.pvlog_file;
+                    } else {
+                        const uploadedLabel = document.getElementById('pvLoggerUploadedLabel');
+                        const uploadedName = document.getElementById('pvLoggerUploadedName');
+                        if (uploadedName) uploadedName.textContent = experiment.pvlog_file.split('/').pop();
+                        if (uploadedLabel) uploadedLabel.style.display = 'block';
+                    }
+                }
+                if (hiddenInput) hiddenInput.value = experiment.pvlog_file;
+            }
+        } catch (e) {}
+    }
+
     document.querySelectorAll('.acknowledgment-checkbox').forEach(cb => cb.checked = false);
     updateSelectedAcknowledgments();
 }
@@ -722,6 +747,7 @@ function populateViewModalBasic(title, experimentNumber, proposal, statusBadge, 
     const seesDoiEl = document.getElementById('detailViewSeesDoi');
     const apsDoiEl = document.getElementById('detailViewApsDoi');
     const esafPdfEl = document.getElementById('detailViewEsafPdf');
+    const pvlogFileEl = document.getElementById('detailViewPvlogFile');
 
     if (titleEl) titleEl.textContent = title || 'N/A';
     if (esafEl) esafEl.textContent = experimentNumber || 'N/A';
@@ -735,12 +761,12 @@ function populateViewModalBasic(title, experimentNumber, proposal, statusBadge, 
             statusEl.textContent = 'N/A';
         }
     }
-    
+
     // Set data path from experiment data or N/A
     if (dataPathEl) {
         dataPathEl.textContent = (dataPath && dataPath.trim() !== '') ? dataPath : 'N/A';
     }
-    
+
     // Set other fields to N/A for now
     if (beamlineEl) beamlineEl.textContent = 'N/A';
     if (descriptionEl) descriptionEl.textContent = 'N/A';
@@ -748,8 +774,10 @@ function populateViewModalBasic(title, experimentNumber, proposal, statusBadge, 
     if (endDateEl) endDateEl.textContent = 'N/A';
     if (spokespersonEl) spokespersonEl.textContent = 'N/A';
     if (beamlineContactEl) beamlineContactEl.textContent = 'N/A';
-    if (doiEl) doiEl.textContent = 'N/A';
+    if (seesDoiEl) seesDoiEl.textContent = 'N/A';
+    if (apsDoiEl) apsDoiEl.textContent = 'N/A';
     if (esafPdfEl) esafPdfEl.textContent = 'N/A';
+    if (pvlogFileEl) pvlogFileEl.textContent = 'N/A';
 }
 
 // Populate view modal with full experiment data
@@ -768,6 +796,7 @@ function populateViewModalFull(experiment) {
     const seesDoiEl = document.getElementById('detailViewSeesDoi');
     const apsDoiEl = document.getElementById('detailViewApsDoi');
     const esafPdfEl = document.getElementById('detailViewEsafPdf');
+    const pvlogFileEl = document.getElementById('detailViewPvlogFile');
 
     if (titleEl) titleEl.textContent = experiment.title || 'N/A';
     if (esafEl) esafEl.textContent = experiment.id || 'N/A';
@@ -854,6 +883,11 @@ function populateViewModalFull(experiment) {
         } else {
             esafPdfEl.textContent = 'N/A';
         }
+    }
+
+    // PVLog file
+    if (pvlogFileEl) {
+        pvlogFileEl.textContent = (experiment.pvlog_file && experiment.pvlog_file !== 'N/A') ? experiment.pvlog_file : 'N/A';
     }
 }
 

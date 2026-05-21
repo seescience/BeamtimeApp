@@ -272,58 +272,60 @@
                 </div>
                 <div class="modal-body">
                     <div class="container-fluid">
-                        <!-- Basic Information Row -->
+                        <!-- Title Row -->
                         <div class="row mb-3">
-                            <div class="col-md-6">
+                            <div class="col-md-12">
                                 <div class="form-label fw-bold">Title</div>
                                 <div id="detailViewTitle"></div>
                             </div>
-                            <div class="col-md-3">
-                                <div class="form-label fw-bold">ESAF</div>
-                                <div id="detailViewExperimentNumber"></div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-label fw-bold">Proposal</div>
-                                <div id="detailViewProposal"></div>
-                            </div>
                         </div>
-                        
-                        <!-- Status and Beamline Row -->
+
+                        <!-- Three Column Info Row -->
                         <div class="row mb-3">
-                            <div class="col-md-6">
-                                <div class="form-label fw-bold">Status</div>
-                                <div id="detailViewStatus"></div>
+                            <div class="col-md-4">
+                                <div class="mb-2">
+                                    <div class="form-label fw-bold">Status</div>
+                                    <div id="detailViewStatus"></div>
+                                </div>
+                                <div class="mb-2">
+                                    <div class="form-label fw-bold">Start Date</div>
+                                    <div id="detailViewStartDate"></div>
+                                </div>
+                                <div class="mb-2">
+                                    <div class="form-label fw-bold">Spokesperson</div>
+                                    <div id="detailViewSpokesperson"></div>
+                                </div>
                             </div>
-                            <div class="col-md-6">
-                                <div class="form-label fw-bold">Beamline</div>
-                                <div id="detailViewBeamline"></div>
+                            <div class="col-md-4">
+                                <div class="mb-2">
+                                    <div class="form-label fw-bold">Beamline</div>
+                                    <div id="detailViewBeamline"></div>
+                                </div>
+                                <div class="mb-2">
+                                    <div class="form-label fw-bold">End Date</div>
+                                    <div id="detailViewEndDate"></div>
+                                </div>
+                                <div class="mb-2">
+                                    <div class="form-label fw-bold">Beamline Contact</div>
+                                    <div id="detailViewBeamlineContact"></div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-2">
+                                    <div class="form-label fw-bold">Proposal</div>
+                                    <div id="detailViewProposal"></div>
+                                </div>
+                                <div class="mb-2">
+                                    <div class="form-label fw-bold">ESAF</div>
+                                    <div id="detailViewExperimentNumber"></div>
+                                </div>
+                                <div class="mb-2">
+                                    <div class="form-label fw-bold">ESAF PDF</div>
+                                    <div id="detailViewEsafPdf"></div>
+                                </div>
                             </div>
                         </div>
-                        
-                        <!-- Dates Row -->
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <div class="form-label fw-bold">Start Date</div>
-                                <div id="detailViewStartDate"></div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-label fw-bold">End Date</div>
-                                <div id="detailViewEndDate"></div>
-                            </div>
-                        </div>
-                        
-                        <!-- Personnel Row -->
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <div class="form-label fw-bold">Spokesperson</div>
-                                <div id="detailViewSpokesperson"></div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-label fw-bold">Beamline Contact</div>
-                                <div id="detailViewBeamlineContact"></div>
-                            </div>
-                        </div>
-                        
+
                         <!-- Description Row -->
                         <div class="row mb-3">
                             <div class="col-md-12">
@@ -331,28 +333,28 @@
                                 <div id="detailViewDescription" class="text-break"></div>
                             </div>
                         </div>
-                        
-                        <!-- Data Path Row -->
+
+                        <!-- Data Path and PVLog Row -->
                         <div class="row mb-3">
-                            <div class="col-md-12">
+                            <div class="col-md-6">
                                 <div class="form-label fw-bold">Data Path</div>
                                 <div id="detailViewDataPath" class="font-monospace text-break"></div>
                             </div>
+                            <div class="col-md-6">
+                                <div class="form-label fw-bold">PVLog File</div>
+                                <div id="detailViewPvlogFile" class="font-monospace text-break"></div>
+                            </div>
                         </div>
-                        
-                        <!-- DOI and PDF Row -->
+
+                        <!-- DOI Row -->
                         <div class="row mb-2">
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <div class="form-label fw-bold">SEES DOI</div>
                                 <div id="detailViewSeesDoi"></div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <div class="form-label fw-bold">APS DOI</div>
                                 <div id="detailViewApsDoi"></div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-label fw-bold">ESAF PDF</div>
-                                <div id="detailViewEsafPdf"></div>
                             </div>
                         </div>
                     </div>
