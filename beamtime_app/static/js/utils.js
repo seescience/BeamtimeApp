@@ -82,7 +82,9 @@ function populateDataPathDropdown(experimentId) {
                     }
                     
                     if (experiment.run_id) {
-                        runNumber = experiment.run_id;
+                        const runSelect = document.getElementById('runSelect');
+                        const runOption = runSelect ? runSelect.querySelector(`option[value="${experiment.run_id}"]`) : null;
+                        runNumber = runOption ? runOption.textContent.trim() : experiment.run_id;
                     }
                     
                     if (experiment.spokesperson_name && experiment.spokesperson_name !== 'N/A') {
@@ -198,11 +200,10 @@ function populateDataPathTemplate(template) {
                         year = new Date(experiment.start_date).getFullYear();
                     }
                     
-                    // Extract run number from run_id (assuming format like "2025-1")
                     if (experiment.run_id) {
-                        // You might need to get the actual run name from the runs data
-                        // For now, using run_id directly
-                        runNumber = experiment.run_id;
+                        const runSelect = document.getElementById('runSelect');
+                        const runOption = runSelect ? runSelect.querySelector(`option[value="${experiment.run_id}"]`) : null;
+                        runNumber = runOption ? runOption.textContent.trim() : experiment.run_id;
                     }
                     
                     // Get spokesperson last name
