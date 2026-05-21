@@ -84,7 +84,8 @@ function populateDataPathDropdown(experimentId) {
                     if (experiment.run_id) {
                         const runSelect = document.getElementById('runSelect');
                         const runOption = runSelect ? runSelect.querySelector(`option[value="${experiment.run_id}"]`) : null;
-                        runNumber = runOption ? runOption.textContent.trim() : experiment.run_id;
+                        const runText = runOption ? runOption.textContent.trim() : String(experiment.run_id);
+                        runNumber = runText.includes('-') ? runText.split('-').pop() : runText;
                     }
                     
                     if (experiment.spokesperson_name && experiment.spokesperson_name !== 'N/A') {
@@ -203,7 +204,8 @@ function populateDataPathTemplate(template) {
                     if (experiment.run_id) {
                         const runSelect = document.getElementById('runSelect');
                         const runOption = runSelect ? runSelect.querySelector(`option[value="${experiment.run_id}"]`) : null;
-                        runNumber = runOption ? runOption.textContent.trim() : experiment.run_id;
+                        const runText = runOption ? runOption.textContent.trim() : String(experiment.run_id);
+                        runNumber = runText.includes('-') ? runText.split('-').pop() : runText;
                     }
                     
                     // Get spokesperson last name
