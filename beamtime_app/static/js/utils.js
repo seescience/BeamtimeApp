@@ -11,7 +11,6 @@
  * Copyright (C) 2025 NSF SEES, USA
  * ---------------------------------------------------------------------------------- */
 
-let acknowledgmentOptions = [];
 let currentSortState = [];
 let experimentModal = null;
 let experimentViewModal = null;
@@ -911,22 +910,6 @@ function initializeTableHandlers() {
     // No bulk selection or processing for now
 }
 
-// Fetch acknowledgment options from the server
-function fetchAcknowledgmentOptions() {
-    fetch('/api/v1/get_acknowledgments')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Failed to fetch acknowledgments');
-            }
-            return response.json();
-        })
-        .then(data => {
-            acknowledgmentOptions = data;
-            // Acknowledgments are already rendered in the template
-        })
-        .catch(error => console.error('Error fetching acknowledgment options:', error));
-}
-
 // Path validation with debouncing
 let validationTimeout = null;
 
@@ -1349,7 +1332,6 @@ function setDefaultSorting() {
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', () => {
-    fetchAcknowledgmentOptions();
     initializeExperimentModal();
     initializeTableHandlers();
     initializeFilterFormAutoSubmit();

@@ -56,14 +56,6 @@ def home() -> str:
     )
 
 
-@api_v1.route("/get_acknowledgments", methods=["GET"])
-@login_required
-def get_acknowledgments() -> str:
-    """API endpoint to fetch acknowledgment options."""
-    acknowledgments = get_all_entries(Acknowledgment)
-    return jsonify(acknowledgments)
-
-
 @api_v1.route("/create_update_queue", methods=["POST"])
 @login_required
 def create_update_queue() -> str:
@@ -75,8 +67,8 @@ def create_update_queue() -> str:
     valid_rows = [
         {
             "experiment_id": row.get("experiment_number") or None,
-            "data_path": row.get("data_path") or None,
-            "pvlog_path": row.get("pvlog_path") or None,
+            "data_path": row.get("data_path") or "",
+            "pvlog_path": row.get("pvlog_path") or "",
             "create_doi": row.get("doi") or False,
             "draft_doi": row.get("draft_doi") or False,
             "acknowledgments": row.get("acknowledgments") or [],

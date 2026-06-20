@@ -41,6 +41,9 @@ class BaseConfig:
     # Database configuration
     DATABASE_URI = os.getenv("DATABASE_URI")
 
+    # Local development bypass LDAP and accept any login credentials in development mode
+    DEV_AUTH_BYPASS = os.getenv("DEV_AUTH_BYPASS", "false").lower() == "true"
+
     # LDAP configuration
     LDAP_HOST = os.getenv("LDAP_HOST")
     LDAP_PORT = int(os.getenv("LDAP_PORT"))

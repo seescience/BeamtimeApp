@@ -11,13 +11,13 @@
 # Copyright (C) 2025 NSF SEES, USA
 # ----------------------------------------------------------------------------------
 
-from typing import Any
+import logging
 
 from sqlalchemy import insert, update
 from sqlalchemy.future import select
 from sqlalchemy.orm import Session, aliased
 
-from beamtime_app.database import DBException, session_scope
+from beamtime_app.database import session_scope
 from beamtime_app.models import (
     APSBeamline,
     BaseModel,
@@ -31,6 +31,8 @@ from beamtime_app.models import (
 )
 from beamtime_app.utils import format_experiment_data, to_dictionary
 
+logger = logging.getLogger(__name__)
+
 __all__ = ["add_to_queue", "get_all_entries", "get_experiments", "get_info_value"]
 
 
@@ -39,31 +41,22 @@ def _select_all(db: Session, model: BaseModel) -> list[BaseModel]:
     return db.execute(select(model)).scalars().all()
 
 
-def get_all_entries(model: BaseModel) -> list[dict[str, Any]]:
-    """Returns all entries for a given model."""
-    entries = []
-
+def get_all_entries(model: BaseModel) -> list[dict[str, any]]:
     with session_scope() as session:
         try:
-            entries = [to_dictionary(entry) for entry in _select_all(session, model)]
-        except DBException as e:
-            # Temporary error. Switch to email alerts
-            print(e)
-
-    return entries
+            return [to_dictionary(entry) for entry in _select_all(session, model)]
+        except Exception as e:
+            logger.error(f"Error fetching entries for {getattr(model, '__name__', 'Unknown')}: {e}")
+            return []
 
 
 def get_info_value(key: str) -> str | None:
-    """Returns the value for a given key from the info table."""
-    value = None
-
     with session_scope() as session:
         try:
-            value = session.execute(select(Info.value).where(Info.key == key)).scalar_one_or_none()
+            return session.execute(select(Info.value).where(Info.key == key)).scalar_one_or_none()
         except Exception as e:
-            print(e)
-
-    return value
+            logger.error(f"Error fetching info value for {key}: {e}")
+            return None
 
 
 def get_experiments(
@@ -159,8 +152,8 @@ def get_experiments(
                 for result in results
             ]
 
-        except DBException as e:
-            print(f"Database error: {e}")
+        except Exception as e:
+            logger.error(f"Error fetching experiments: {e}")
 
     # Apply filters
     if beamline:
@@ -178,19 +171,25 @@ def get_experiments(
     return format_experiment_data(experiments)
 
 
-def add_to_queue(rows: list[dict[str, Any]]) -> dict[str, int]:
+def add_to_queue(rows: list[dict[str, any]]) -> dict[str, int]:
     """Adds multiple rows to the queue table and updates experiment status to pending."""
     success_count = 0
     failure_count = 0
 
-    # Convert "N/A" values to None and handle acknowledgments as a comma-separated string
-    sanitized_rows = [
-        {
-            key: (None if value == "N/A" else ",".join(map(str, value)) if key == "acknowledgments" and isinstance(value, list) else value)
-            for key, value in row.items()
-        }
-        for row in rows
-    ]
+    # Normalize values for NOT NULL text columns (empty string, not NULL)
+    sanitized_rows = []
+    for row in rows:
+        sanitized = {}
+        for key, value in row.items():
+            if key == "acknowledgments" and isinstance(value, list):
+                sanitized[key] = ",".join(map(str, value))
+            elif key in ("data_path", "pvlog_path", "acknowledgments") and value in (None, "N/A", ""):
+                sanitized[key] = ""
+            elif value == "N/A":
+                sanitized[key] = None
+            else:
+                sanitized[key] = value
+        sanitized_rows.append(sanitized)
 
     with session_scope() as session:
         try:
@@ -214,7 +213,7 @@ def add_to_queue(rows: list[dict[str, Any]]) -> dict[str, int]:
             session.commit()
             success_count = len(sanitized_rows)
         except Exception as e:
-            print(f"Failed to add rows to queue: {e}")
+            logger.error(f"Failed to add rows to queue: {e}")
             session.rollback()
             failure_count = len(sanitized_rows)
 
