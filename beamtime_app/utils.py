@@ -146,3 +146,120 @@ def validate_and_normalize_datapath(datapath: str) -> dict[str, any]:
         "normalized": normalized,
         "message": "Path exists" if exists else "Path is valid",
     }
+
+
+def get_pvlog_allowed_roots() -> list[Path]:
+    """Return absolute directories where PVLogger YAML files may be read or written."""
+    from beamtime_app.crud import get_info_value
+
+    roots = []
+    for key in ("uploads_directory", "pvlog_templates_directory"):
+        value = get_info_value(key)
+        if value:
+            roots.append(Path(value).resolve())
+    return roots
+
+
+def _pvlog_path_is_allowed(candidate: Path, roots: list[Path]) -> bool:
+    resolved = candidate.resolve()
+    return any(resolved == root or resolved.is_relative_to(root) for root in roots)
+
+
+def resolve_pvlog_path(path: str) -> Optional[str]:
+    """Resolve a PVLogger YAML path if it exists within an allowed directory."""
+    if not path or not str(path).strip():
+        return None
+
+    candidate = Path(path)
+    if not candidate.is_file():
+        return None
+
+    roots = get_pvlog_allowed_roots()
+    if not _pvlog_path_is_allowed(candidate, roots):
+        return None
+
+    return str(candidate.resolve())
+
+
+def resolve_pvlog_write_path(path: str) -> Optional[str]:
+    """Resolve an exact PVLogger path for writing. No basename fallback."""
+    return resolve_pvlog_path(path)
+
+
+def resolve_pvlog_reference(path_or_name: str) -> Optional[str]:
+    """Resolve a PVLogger file from a full path or a bare filename."""
+    resolved = resolve_pvlog_path(path_or_name)
+    if resolved:
+        return resolved
+
+    from beamtime_app.crud import get_info_value
+
+    basename = Path(path_or_name).name
+    uploads_dir = get_info_value("uploads_directory")
+    if uploads_dir:
+        resolved = resolve_pvlog_path(str(Path(uploads_dir) / basename))
+        if resolved:
+            return resolved
+
+    templates_dir = get_info_value("pvlog_templates_directory")
+    if templates_dir:
+        templates_root = Path(templates_dir)
+        if templates_root.is_dir():
+            for beamline_dir in templates_root.iterdir():
+                if beamline_dir.is_dir():
+                    resolved = resolve_pvlog_path(str(beamline_dir / basename))
+                    if resolved:
+                        return resolved
+
+    return None
+
+
+def is_upload_pvlog_path(path: str) -> bool:
+    """Return True when the path is inside the configured uploads directory."""
+    from beamtime_app.crud import get_info_value
+
+    uploads_dir = get_info_value("uploads_directory")
+    if not uploads_dir:
+        return False
+
+    uploads_root = Path(uploads_dir).resolve()
+    return Path(path).resolve().is_relative_to(uploads_root)
+
+
+_QUEUE_PVLOG_PATTERN = re.compile(r"^pvlog_\d+\.(yaml|yml)$", re.IGNORECASE)
+
+
+def is_queue_pvlog_path(path: str) -> bool:
+    """Return True for the per-ESAF queue working copy in uploads."""
+    if not is_upload_pvlog_path(path):
+        return False
+    return bool(_QUEUE_PVLOG_PATTERN.match(Path(path).name))
+
+
+def is_upload_original_pvlog_path(path: str) -> bool:
+    """Return True for an uploaded source file stored in uploads (not the queue copy)."""
+    return is_upload_pvlog_path(path) and not is_queue_pvlog_path(path)
+
+
+def queue_pvlog_filename(esaf_number: str) -> str:
+    """Return the standard queue working-copy filename for an ESAF."""
+    return f"pvlog_{esaf_number}.yaml"
+
+
+def uploaded_pvlog_filename(esaf_number: str, original_filename: str) -> str:
+    """Return the stored filename for an uploaded PVLogger source file."""
+    return f"{esaf_number}_{Path(original_filename).name}"
+
+
+def new_pvlog_filename(esaf_number: str, uploads_root: Path) -> str:
+    """Return an unused filename for a newly created PVLogger source file."""
+    base = f"{esaf_number}_new_pvlog.yaml"
+    if not (uploads_root / base).exists():
+        return base
+
+    counter = 1
+    while True:
+        candidate = f"{esaf_number}_new_pvlog_{counter}.yaml"
+        if not (uploads_root / candidate).exists():
+            return candidate
+        counter += 1

@@ -38,7 +38,7 @@ def _dev_auth_user(username: str) -> User:
     return User(
         username=username,
         first_name=display_name.split()[0] if display_name else "Dev",
-        last_name=display_name.split()[-1] if display_name and " " in display_name else "User",
+        last_name=display_name.split()[-1] if display_name and " " in display_name else "",
         display_name=display_name or username,
         dn=f"uid={username},ou=dev,dc=local",
         groups=["CN=BeamtimeApp Dev,OU=Groups,DC=local"],

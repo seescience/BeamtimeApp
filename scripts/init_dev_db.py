@@ -49,6 +49,11 @@ def _setup_dev_directories() -> dict[str, str]:
             encoding="utf-8",
         )
 
+    fixture_file = PROJECT_ROOT / "test_pvlog.yaml"
+    template_fixture = templates_dir / "test_pvlog.yaml"
+    if fixture_file.is_file() and not template_fixture.exists():
+        template_fixture.write_text(fixture_file.read_text(encoding="utf-8"), encoding="utf-8")
+
     return {
         "uploads": str(uploads_dir),
         "pvlog_templates": str(PROJECT_ROOT / "dev" / "pvlog_templates"),
