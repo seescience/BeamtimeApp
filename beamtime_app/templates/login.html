@@ -1,64 +1,61 @@
 {% extends "layout.html" %}
 {% block content %}
     <div class="login-container">
-        <div class="login-header">
-            <img src="https://seescience.org/wp-content/uploads/2024/07/NSF-SEES-Logo.png" 
-                 alt="NSF SEES Logo" 
-                 class="sees-logo">
-            <h2>Beamtime Management</h2>
+        <div class="login-side-panel">
+<div class="login-side-tagline">
+                <h1>Beamtime<br>Management</h1>
+                <p>Manage ESAF experiments, data paths, and PVLogger configurations for NSF SEES beamlines at the APS.</p>
+            </div>
+
+            <div class="login-side-footer">
+                <a href="https://seescience.org" target="_blank" rel="noopener noreferrer">NSF SEES</a> &middot;
+                <a href="https://gsecars.uchicago.edu" target="_blank" rel="noopener noreferrer">GSECARS, University of Chicago</a>
+            </div>
         </div>
-        
-        <div class="login-body">
-            <!-- Flash Messages -->
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
-                            <i class="bi bi-{{ 'exclamation-triangle' if category == 'error' else 'info-circle' }} me-2"></i>
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
 
-            <form id="loginForm" method="POST">
-                <div class="form-floating mb-3">
-                    <input type="text" class="form-control" id="username" name="username" placeholder="Username" required>
-                    <label for="username"><i class="bi bi-person me-2"></i>Username</label>
-                </div>
-                
-                <div class="form-floating mb-4">
-                    <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
-                    <label for="password"><i class="bi bi-lock me-2"></i>Password</label>
-                </div>
-                
-                <div class="d-grid">
-                    <button class="btn btn-primary" type="submit" id="loginBtn">
-                        <span class="btn-text">
-                            <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
-                        </span>
-                        <span class="loading-spinner">
-                            <i class="bi bi-arrow-clockwise me-2"></i>Signing in...
-                        </span>
-                    </button>
-                </div>
-            </form>
+        <div class="login-form-panel">
+            <div class="login-form-inner">
+                <p class="login-form-brand">NSF SEES · GSECARS</p>
+                <h2 class="login-form-title">Sign in</h2>
+                <p class="login-form-subtitle">Enter your credentials to continue</p>
 
-            <!-- System Information -->
-            <div class="system-info">
-                <i class="bi bi-building me-1"></i>
-                <a href="https://seescience.org" target="_blank" rel="noopener noreferrer">NSF SEES</a> | 
-                <a href="https://gsecars.uchicago.edu" target="_blank" rel="noopener noreferrer">GSECARS, The University of Chicago</a>
+                <div class="login-card">
+                    <div class="login-card-form">
+                        {% with messages = get_flashed_messages(with_categories=true) %}
+                            {% if messages %}
+                                {% for category, message in messages %}
+                                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show mb-3" role="alert">
+                                        <i class="bi bi-{{ 'exclamation-triangle' if category == 'error' else 'info-circle' }} me-2"></i>
+                                        {{ message }}
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+                        {% endwith %}
+
+                        <form id="loginForm" method="POST">
+                            <div class="form-floating mb-3">
+                                <input type="text" class="form-control" id="username" name="username" placeholder="Username" required>
+                                <label for="username">Username</label>
+                            </div>
+
+                            <div class="form-floating mb-4">
+                                <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
+                                <label for="password">Password</label>
+                            </div>
+
+                            <div class="d-grid">
+                                <button class="btn btn-primary" type="submit" id="loginBtn">
+                                    <span class="btn-text">Sign in</span>
+                                    <span class="loading-spinner">
+                                        <i class="bi bi-arrow-clockwise me-2"></i>Signing in...
+                                    </span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-</div>
-
-<!-- Theme Switcher (positioned absolutely) -->
-<div class="login-theme-switcher">
-    <button class="theme-switcher-button" id="themeSwitcher" aria-label="Toggle theme">
-        <i class="bi bi-sun-fill" id="themeIcon"></i>
-    </button>
-</div>
 {% endblock %}

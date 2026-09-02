@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
 
         // Insert alert
-        const loginBody = document.querySelector('.login-body');
+        const loginBody = document.querySelector('.login-card-form');
         loginBody.insertBefore(alertDiv, loginForm);
 
         // Auto-dismiss after 5 seconds

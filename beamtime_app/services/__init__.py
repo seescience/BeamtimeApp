@@ -12,13 +12,6 @@
 # Copyright (C) 2025 NSF SEES, USA
 # ----------------------------------------------------------------------------------
 
-from beamtime_app.services.auth_service import AuthService, LDAPAuth, User, cache_user, clear_user_cache, get_user_by_id
+from beamtime_app.services.auth_service import AuthService, User, clear_user_cache, get_user_by_id
 
-__all__ = [
-    "AuthService",
-    "get_user_by_id",
-    "cache_user",
-    "clear_user_cache",
-    "LDAPAuth",
-    "User",
-]
+__all__ = ["AuthService", "User", "clear_user_cache", "get_user_by_id"]

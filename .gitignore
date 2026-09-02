@@ -46,3 +46,7 @@ logs/
 
 # Sensitive data
 .env
+.env.dev
+
+# Local development
+dev/

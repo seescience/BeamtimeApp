@@ -11,11 +11,52 @@
  * Copyright (C) 2025 NSF SEES, USA
  * ---------------------------------------------------------------------------------- */
 
-let acknowledgmentOptions = [];
 let currentSortState = [];
-let experimentModal = null;
-let experimentViewModal = null;
+let currentViewExperimentId = null;
 let currentEditingExperiment = null;
+
+function statusCssClass(status) {
+    return `status-${String(status || 'unknown').toLowerCase().replace(/\s+/g, '-')}`;
+}
+
+function createStatusBadge(status) {
+    const badge = document.createElement('span');
+    badge.className = `status-badge ${statusCssClass(status)}`;
+    badge.textContent = status;
+    return badge;
+}
+
+function applyPvlogSourceResult(result, options = {}) {
+    const templateSelect = document.getElementById('pvLoggerTemplateSelect');
+
+    if (result.success) {
+        if (templateSelect) templateSelect.value = '';
+        clearUploadedFile();
+        setPvLoggerPathDisplay(result.path);
+        loadPvlogEditor(result.path);
+        showNotification('success', result.message);
+        return true;
+    }
+
+    showNotification('error', result.error || options.errorMessage || 'PVLogger file operation failed');
+    if (options.resetOnError) {
+        clearFileSelection();
+    }
+    return false;
+}
+
+function populateDataPathField(userFolder) {
+    const dataPathEl = document.getElementById('dataPath');
+    if (!dataPathEl) return;
+
+    if (userFolder && userFolder.trim() !== '') {
+        dataPathEl.value = userFolder;
+        return;
+    }
+
+    const prepopulatedPath = getSelectedTechniqueBasePath();
+    dataPathEl.value = prepopulatedPath ? populateDataPathTemplate(prepopulatedPath) : '';
+}
 
 // Initialize data path template dropdown
 function initializeDataPathTemplates() {
@@ -220,19 +261,6 @@ function populateDataPathTemplate(template) {
                 }
             }
             
-            // Fallback to DOM elements if JSON data not available
-            if (!experimentDataStr) {
-                const spokespersonCell = row.querySelector('.experiment-spokesperson');
-                if (spokespersonCell) {
-                    const spokespersonName = spokespersonCell.textContent.trim();
-                    if (spokespersonName && spokespersonName !== 'N/A') {
-                        const nameParts = spokespersonName.split(' ');
-                        if (nameParts.length > 1) {
-                            userLastName = nameParts[nameParts.length - 1].toLowerCase();
-                        }
-                    }
-                }
-            }
         }
     }
     
@@ -270,6 +298,33 @@ function initializeDoiCheckboxes() {
     createDoiCheckbox.addEventListener('change', toggleDraftDoiVisibility);
 }
 
+// Update visible PVLogger path inside the template/file picker
+function setPvLoggerPathDisplay(path) {
+    const pathRow = document.getElementById('pvLoggerPathDisplayRow');
+    const pathDisplay = document.getElementById('pvLoggerPathDisplay');
+    const hiddenInput = document.getElementById('pvLoggerPathValue');
+    const templateSelect = document.getElementById('pvLoggerTemplateSelect');
+
+    if (hiddenInput) hiddenInput.value = path || '';
+
+    if (path) {
+        const displayName = path.split('/').pop() || path;
+        if (pathDisplay) {
+            pathDisplay.textContent = displayName;
+            pathDisplay.title = path;
+        }
+        if (pathRow) pathRow.hidden = false;
+        if (templateSelect) templateSelect.hidden = true;
+    } else {
+        if (pathDisplay) {
+            pathDisplay.textContent = '';
+            pathDisplay.title = '';
+        }
+        if (pathRow) pathRow.hidden = true;
+        if (templateSelect) templateSelect.hidden = false;
+    }
+}
+
 // Fetch and populate pvlog template dropdown
 function loadPVLoggerTemplates() {
     const select = document.getElementById('pvLoggerTemplateSelect');
@@ -295,31 +350,41 @@ function loadPVLoggerTemplates() {
 function initializePVLoggerFilePicker() {
     const fileInput = document.getElementById('pvLoggerPath');
     const selectBtn = document.getElementById('selectFileBtn');
+    const createBtn = document.getElementById('createNewPvlogBtn');
     const clearBtn = document.getElementById('clearFileBtn');
-    const hiddenInput = document.getElementById('pvLoggerPathValue');
     const templateSelect = document.getElementById('pvLoggerTemplateSelect');
 
-    if (!fileInput || !selectBtn || !hiddenInput || !templateSelect) return;
+    if (!fileInput || !selectBtn || !templateSelect) return;
 
-    // When template dropdown changes, set the hidden value and clear any upload
+    initializePvlogEditorWidgets();
+
     templateSelect.addEventListener('change', () => {
-        hiddenInput.value = templateSelect.value;
         clearUploadedFile();
+        if (templateSelect.value) {
+            setPvLoggerPathDisplay(templateSelect.value);
+            loadPvlogEditor(templateSelect.value);
+        } else {
+            setPvLoggerPathDisplay('');
+            hidePvlogEditor();
+        }
     });
 
-    // Handle upload button click
+    if (createBtn) {
+        createBtn.addEventListener('click', () => {
+            createNewPvlogFile();
+        });
+    }
+
     selectBtn.addEventListener('click', () => {
         fileInput.click();
     });
 
-    // Handle clear upload button
     if (clearBtn) {
         clearBtn.addEventListener('click', () => {
             clearFileSelection();
         });
     }
 
-    // Handle file selection
     fileInput.addEventListener('change', (event) => {
         const file = event.target.files[0];
         if (file) {
@@ -334,13 +399,41 @@ function initializePVLoggerFilePicker() {
     });
 }
 
+// Create a new empty PVLogger file
+function createNewPvlogFile() {
+    const createBtn = document.getElementById('createNewPvlogBtn');
+    const esafNumber = document.getElementById('experimentNumber').value;
+
+    if (!esafNumber) {
+        showNotification('error', 'ESAF number is required to create a PVLogger file');
+        return;
+    }
+
+    if (createBtn) createBtn.disabled = true;
+
+    fetch('/api/v1/create_pvlog_file', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ esaf_number: esafNumber }),
+    })
+        .then(response => response.json())
+        .then(result => {
+            applyPvlogSourceResult(result, {
+                errorMessage: 'Unable to create PVLogger file',
+            });
+        })
+        .catch(error => {
+            console.error('Create PVLogger file error:', error);
+            showNotification('error', 'Unable to create PVLogger file. Please try again.');
+        })
+        .finally(() => {
+            if (createBtn) createBtn.disabled = false;
+        });
+}
+
 // Upload PVLogger file
 function uploadPVLoggerFile(file) {
-    const uploadedLabel = document.getElementById('pvLoggerUploadedLabel');
-    const uploadedName = document.getElementById('pvLoggerUploadedName');
-    const hiddenInput = document.getElementById('pvLoggerPathValue');
     const selectBtn = document.getElementById('selectFileBtn');
-    const templateSelect = document.getElementById('pvLoggerTemplateSelect');
     const esafNumber = document.getElementById('experimentNumber').value;
 
     if (!esafNumber) {
@@ -360,16 +453,10 @@ function uploadPVLoggerFile(file) {
     })
     .then(response => response.json())
     .then(result => {
-        if (result.success) {
-            hiddenInput.value = result.path;
-            if (templateSelect) templateSelect.value = '';
-            if (uploadedName) uploadedName.textContent = result.filename;
-            if (uploadedLabel) uploadedLabel.style.display = 'block';
-            showNotification('success', result.message);
-        } else {
-            showNotification('error', result.error || 'Upload failed');
-            clearFileSelection();
-        }
+        applyPvlogSourceResult(result, {
+            errorMessage: 'Upload failed',
+            resetOnError: true,
+        });
     })
     .catch(error => {
         console.error('Upload error:', error);
@@ -384,114 +471,198 @@ function uploadPVLoggerFile(file) {
 // Clear uploaded file (keep template dropdown intact)
 function clearUploadedFile() {
     const fileInput = document.getElementById('pvLoggerPath');
-    const uploadedLabel = document.getElementById('pvLoggerUploadedLabel');
-    const uploadedName = document.getElementById('pvLoggerUploadedName');
-
     if (fileInput) fileInput.value = '';
-    if (uploadedLabel) uploadedLabel.style.display = 'none';
-    if (uploadedName) uploadedName.textContent = '';
 }
 
-// Clear file selection and reset hidden value
+// Clear file selection and reset PVLogger state
 function clearFileSelection() {
-    const hiddenInput = document.getElementById('pvLoggerPathValue');
     const templateSelect = document.getElementById('pvLoggerTemplateSelect');
     const selectBtn = document.getElementById('selectFileBtn');
+    const createBtn = document.getElementById('createNewPvlogBtn');
 
     clearUploadedFile();
-    if (hiddenInput) hiddenInput.value = '';
+    setPvLoggerPathDisplay('');
+    hidePvlogEditor();
     if (templateSelect) templateSelect.value = '';
     if (selectBtn) selectBtn.disabled = false;
+    if (createBtn) createBtn.disabled = false;
 }
 
-// Reset PVLogger section on modal close
-function resetPVLoggerFilePicker() {
-    const templateSelect = document.getElementById('pvLoggerTemplateSelect');
-    const hiddenInput = document.getElementById('pvLoggerPathValue');
-
-    clearUploadedFile();
-    if (templateSelect) templateSelect.value = '';
-    if (hiddenInput) hiddenInput.value = '';
-}
-
-// Initialize the experiment modals
-function initializeExperimentModal() {
-    // Edit/queue modal
-    experimentModal = new bootstrap.Modal(document.getElementById('experimentModal'));
-
-    // View-only modal
-    const viewEl = document.getElementById('experimentViewModal');
-    if (viewEl) {
-        experimentViewModal = new bootstrap.Modal(viewEl);
-    }
-    
-    // Initialize acknowledgment checkboxes change handler
+// Initialize experiment detail panel and form handlers
+function initializeExperimentViews() {
     document.querySelectorAll('.acknowledgment-checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', updateSelectedAcknowledgments);
     });
-    
-    // Initialize add to queue button
+
     const addBtn = document.getElementById('addToQueueBtn');
     if (addBtn) addBtn.addEventListener('click', addSingleExperimentToQueue);
-    
-    // Initialize path validation button
+
     const validateBtn = document.getElementById('validatePathBtn');
     if (validateBtn) validateBtn.addEventListener('click', validateCurrentPath);
-    
-    // Initialize file picker for PVLogger Path
+
+    const backBtn = document.getElementById('backToExperimentsBtn');
+    if (backBtn) backBtn.addEventListener('click', handleExperimentBack);
+
+    const editBtn = document.getElementById('detailEditBtn');
+    if (editBtn) {
+        editBtn.addEventListener('click', () => {
+            if (currentViewExperimentId) {
+                showExperimentEdit(currentViewExperimentId);
+            }
+        });
+    }
+
     initializePVLoggerFilePicker();
     loadPVLoggerTemplates();
-    
-    // Initialize DOI checkbox interactions
     initializeDoiCheckboxes();
-    
-    // Initialize data path template dropdown
     initializeDataPathTemplates();
-    
-    // Real-time path validation
+
     const dataPathEl = document.getElementById('dataPath');
     if (dataPathEl) dataPathEl.addEventListener('input', debounceValidation);
 }
 
-// Open experiment modal for viewing or editing
-function openExperimentModal(experimentId, mode = 'edit') {
-    const modal = document.getElementById('experimentModal');
-    const modalTitle = document.getElementById('experimentModalLabel');
-    const form = document.getElementById('experimentForm');
+function setDashboardTopbar(title, meta) {
+    const titleEl = document.querySelector('.dash-page-title');
+    const metaEl = document.querySelector('.dash-page-meta');
+    const searchEl = document.querySelector('.dash-search');
+
+    if (titleEl) titleEl.textContent = title;
+    if (metaEl) metaEl.innerHTML = meta;
+    if (searchEl) searchEl.style.display = title === 'Experiments' ? '' : 'none';
+}
+
+function handleExperimentBack() {
+    const editPanel = document.getElementById('experimentEditPanel');
+    if (editPanel && !editPanel.hidden && currentViewExperimentId) {
+        showExperimentView(currentViewExperimentId);
+        return;
+    }
+    showExperimentsList();
+}
+
+function showExperimentsList() {
+    const panel = document.querySelector('.dash-panel');
+    const listView = document.getElementById('experimentsListView');
+    const detailView = document.getElementById('experimentDetailView');
+    const totalCount = document.querySelectorAll('#experimentsTableBody .experiment-row').length;
+    const visibleCount = document.getElementById('dashboardVisibleCount')?.textContent || totalCount;
+
+    if (panel) panel.classList.remove('panel-has-detail');
+    if (listView) listView.hidden = false;
+    if (detailView) detailView.hidden = true;
+    document.querySelectorAll('.experiment-row.row-active').forEach(r => r.classList.remove('row-active'));
+
+    currentViewExperimentId = null;
+    currentEditingExperiment = null;
+    clearFileSelection();
+
+    const metaEl = document.querySelector('.dash-page-meta');
+    const lastSynced = metaEl?.dataset.lastSynced || 'N/A';
+    setDashboardTopbar(
+        'Experiments',
+        `<span id="dashboardVisibleCount">${visibleCount}</span> of ${totalCount} shown &middot; Synced ${lastSynced}`
+    );
+}
+
+function showExperimentView(experimentId) {
+    const panel = document.querySelector('.dash-panel');
+    const listView = document.getElementById('experimentsListView');
+    const detailView = document.getElementById('experimentDetailView');
+    const viewPanel = document.getElementById('experimentViewPanel');
+    const editPanel = document.getElementById('experimentEditPanel');
+    const editBtn = document.getElementById('detailEditBtn');
     const addToQueueBtn = document.getElementById('addToQueueBtn');
-    
-    // Reset form
-    form.reset();
-    clearValidationMessage();
-    
-    // Prepare edit/queue modal
+
+    currentViewExperimentId = experimentId;
+    currentEditingExperiment = null;
+
+    if (panel) panel.classList.add('panel-has-detail');
+    if (listView) listView.hidden = false;
+    if (detailView) detailView.hidden = false;
+
+    document.querySelectorAll('.experiment-row.row-active').forEach(r => r.classList.remove('row-active'));
+    const selectedRow = document.querySelector(`tr[data-experiment-id="${experimentId}"]`);
+    if (selectedRow) selectedRow.classList.add('row-active');
+    if (viewPanel) viewPanel.hidden = false;
+    if (editPanel) editPanel.hidden = true;
+    if (editBtn) editBtn.hidden = false;
+    if (addToQueueBtn) addToQueueBtn.hidden = true;
+
+    populateExperimentView(experimentId);
+
+    const metaEl = document.querySelector('.dash-page-meta');
+    const lastSynced = metaEl?.dataset.lastSynced || 'N/A';
+    const totalCount = document.querySelectorAll('#experimentsTableBody .experiment-row').length;
+    const visibleCount = document.getElementById('dashboardVisibleCount')?.textContent || totalCount;
+    setDashboardTopbar(
+        'Experiments',
+        `<span id="dashboardVisibleCount">${visibleCount}</span> of ${totalCount} shown &middot; Synced ${lastSynced}`
+    );
+}
+
+function showExperimentEdit(experimentId) {
+    const viewPanel = document.getElementById('experimentViewPanel');
+    const editPanel = document.getElementById('experimentEditPanel');
+    const editBtn = document.getElementById('detailEditBtn');
+    const addToQueueBtn = document.getElementById('addToQueueBtn');
+    const form = document.getElementById('experimentForm');
+
+    if (!document.getElementById('experimentDetailView') || document.getElementById('experimentDetailView').hidden) {
+        showExperimentView(experimentId);
+    }
+
+    currentViewExperimentId = experimentId;
     currentEditingExperiment = experimentId;
-    modalTitle.textContent = 'Experiment Details';
-    addToQueueBtn.innerHTML = '<i class="bi bi-plus-circle"></i> Add to Queue';
-    addToQueueBtn.title = 'Add experiment to processing queue';
-    
-    // Load experiment data
-    loadExperimentData(experimentId, mode);
-    
-    // Set defaults for queue processing
-    document.getElementById('createDoi').checked = true;
-    
-    // Populate dropdown with resolved paths for this experiment
+
+    if (viewPanel) viewPanel.hidden = true;
+    if (editPanel) editPanel.hidden = false;
+    if (editBtn) editBtn.hidden = true;
+    if (addToQueueBtn) {
+        addToQueueBtn.hidden = false;
+        addToQueueBtn.innerHTML = '<i class="bi bi-plus-circle"></i> Add to Queue';
+    }
+
+    if (form) form.reset();
+    clearValidationMessage();
+    loadExperimentData(experimentId, 'edit');
     populateDataPathDropdown(experimentId);
-    
-    experimentModal.show();
+
+    const metaEl2 = document.querySelector('.dash-page-meta');
+    const lastSynced2 = metaEl2?.dataset.lastSynced || 'N/A';
+    const totalCount2 = document.querySelectorAll('#experimentsTableBody .experiment-row').length;
+    const visibleCount2 = document.getElementById('dashboardVisibleCount')?.textContent || totalCount2;
+    setDashboardTopbar(
+        'Experiments',
+        `<span id="dashboardVisibleCount">${visibleCount2}</span> of ${totalCount2} shown &middot; Synced ${lastSynced2}`
+    );
+}
+
+function populateExperimentView(experimentId) {
+    const row = document.querySelector(`tr[data-experiment-id="${experimentId}"]`);
+    if (!row) return;
+
+    const experimentDataStr = row.getAttribute('data-experiment-data');
+    if (!experimentDataStr) {
+        console.warn('Missing experiment data for view:', experimentId);
+        return;
+    }
+
+    try {
+        populateViewDetails(JSON.parse(experimentDataStr));
+    } catch (error) {
+        console.error('Error parsing experiment data:', error);
+    }
 }
 
 // Load experiment data into modal
 function loadExperimentData(experimentId, mode = 'view') {
     const row = document.querySelector(`tr[data-experiment-id="${experimentId}"]`);
     if (!row) return;
-    
-    // Get data from the table row (new column order: Proposal, Experiment, Title)
-    const proposal = row.querySelector('.experiment-proposal').textContent.trim();
-    const experimentNumber = row.querySelector('.experiment-id').textContent.trim();
-    // Get clean title without status badge
-    const title = row.querySelector('.experiment-title-text').textContent.trim();
+
+    const expData = JSON.parse(row.getAttribute('data-experiment-data') || '{}');
+    const proposal = String(expData.proposal || '');
+    const experimentNumber = String(expData.id || '');
+    const title = String(expData.title || '');
     const userFolder = row.getAttribute('data-user-folder') || '';
     
     // Populate form fields
@@ -507,46 +678,12 @@ function loadExperimentData(experimentId, mode = 'view') {
     // Always keep title and proposal readonly
     titleInput.setAttribute('readonly', true);
     proposalInput.setAttribute('readonly', true);
-    
-    if (mode === 'edit') {
-        // Load existing data path from the experiment if available
-        if (userFolder && userFolder.trim() !== '') {
-            // If there's already a data path, use it as-is
-            document.getElementById('dataPath').value = userFolder;
-        } else {
-            // Check if a technique is selected in the filters and prepopulate with its base_dir
-            const prepopulatedPath = getSelectedTechniqueBasePath();
-            if (prepopulatedPath) {
-                const populatedPath = populateDataPathTemplate(prepopulatedPath);
-                document.getElementById('dataPath').value = populatedPath;
-            } else {
-                document.getElementById('dataPath').value = '';
-            }
-        }
-        
-        // Keep DOI unchecked for editing existing experiments
-        document.getElementById('createDoi').checked = false;
-    } else {
-        // Data path is for queue processing
-        if (userFolder && userFolder.trim() !== '') {
-            document.getElementById('dataPath').value = userFolder;
-        } else {
-            // Check if a technique is selected in the filters and prepopulate with its base_dir
-            const prepopulatedPath = getSelectedTechniqueBasePath();
-            if (prepopulatedPath) {
-                const populatedPath = populateDataPathTemplate(prepopulatedPath);
-                document.getElementById('dataPath').value = populatedPath;
-            } else {
-                document.getElementById('dataPath').value = '';
-            }
-        }
-        
-        // DOI setting defaults to checked for new queue processing
-        document.getElementById('createDoi').checked = true;
-    }
+
+    populateDataPathField(userFolder);
+    document.getElementById('createDoi').checked = mode !== 'edit';
     
     // Reset acknowledgments and PVLogger path
-    resetPVLoggerFilePicker();
+    clearFileSelection();
 
     // Pre-select pvlog_file from experiment data if available
     const experimentDataStr = row.getAttribute('data-experiment-data');
@@ -555,19 +692,14 @@ function loadExperimentData(experimentId, mode = 'view') {
             const experiment = JSON.parse(experimentDataStr);
             if (experiment.pvlog_file && experiment.pvlog_file !== 'N/A') {
                 const templateSelect = document.getElementById('pvLoggerTemplateSelect');
-                const hiddenInput = document.getElementById('pvLoggerPathValue');
                 if (templateSelect) {
                     const matchingOption = templateSelect.querySelector(`option[value="${experiment.pvlog_file}"]`);
                     if (matchingOption) {
                         templateSelect.value = experiment.pvlog_file;
-                    } else {
-                        const uploadedLabel = document.getElementById('pvLoggerUploadedLabel');
-                        const uploadedName = document.getElementById('pvLoggerUploadedName');
-                        if (uploadedName) uploadedName.textContent = experiment.pvlog_file.split('/').pop();
-                        if (uploadedLabel) uploadedLabel.style.display = 'block';
                     }
                 }
-                if (hiddenInput) hiddenInput.value = experiment.pvlog_file;
+                setPvLoggerPathDisplay(experiment.pvlog_file);
+                loadPvlogEditor(experiment.pvlog_file);
             }
         } catch (e) {}
     }
@@ -586,31 +718,34 @@ function addSingleExperimentToQueue() {
     const addToQueueBtn = document.getElementById('addToQueueBtn');
     const originalButtonContent = addToQueueBtn.innerHTML;
     addToQueueBtn.disabled = true;
-    
-    // If no path provided, proceed directly (empty path is allowed)
-    if (!dataPath || dataPath === '') {
-        addToQueueBtn.innerHTML = '<i class="bi bi-plus-circle"></i> Adding to Queue...';
-        proceedWithAddToQueue(formData, addToQueueBtn, originalButtonContent);
-        return;
-    }
-    
-    // Path provided - validate it first
-    addToQueueBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Validating...';
-    
-    validateDataPath(dataPath)
-        .then(validationResult => {
-            if (!validationResult.valid) {
-                showNotification('error', `Invalid data path: ${validationResult.message}`);
-                resetAddToQueueButton(addToQueueBtn, originalButtonContent);
+    addToQueueBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Preparing...';
+
+    preparePvlogQueueCopy()
+        .then(() => {
+            formData.set('pvLoggerPathValue', document.getElementById('pvLoggerPathValue')?.value || '');
+
+            if (!dataPath || dataPath === '') {
+                addToQueueBtn.innerHTML = '<i class="bi bi-plus-circle"></i> Adding to Queue...';
+                proceedWithAddToQueue(formData, addToQueueBtn, originalButtonContent);
                 return;
             }
-            
-            // Path format is valid - proceed with adding to queue
-            proceedWithAddToQueue(formData, addToQueueBtn, originalButtonContent);
+
+            addToQueueBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Validating...';
+
+            return validateDataPath(dataPath)
+                .then(validationResult => {
+                    if (!validationResult.valid) {
+                        showNotification('error', `Invalid data path: ${validationResult.message}`);
+                        resetAddToQueueButton(addToQueueBtn, originalButtonContent);
+                        return;
+                    }
+
+                    proceedWithAddToQueue(formData, addToQueueBtn, originalButtonContent);
+                });
         })
         .catch(error => {
-            console.error('Path validation error:', error);
-            showNotification('error', 'Unable to validate data path. Please check the path and try again.');
+            console.error('PVLogger save before queue failed:', error);
+            showNotification('error', error.message || 'Unable to save PVLogger changes before queueing.');
             resetAddToQueueButton(addToQueueBtn, originalButtonContent);
         });
 }
@@ -658,7 +793,7 @@ function proceedWithAddToQueue(formData, addToQueueBtn, originalButtonContent) {
             
             // Reset button before hiding modal
             resetAddToQueueButton(addToQueueBtn, originalButtonContent);
-            experimentModal.hide();
+            showExperimentsList();
         } else {
             showNotification('warning', 'Failed to add experiment to queue.');
             resetAddToQueueButton(addToQueueBtn, originalButtonContent);
@@ -693,95 +828,8 @@ function updateSelectedAcknowledgments() {
     }
 }
 
-// Open read-only view modal
-function openExperimentViewModal(experimentId) {
-    const row = document.querySelector(`tr[data-experiment-id="${experimentId}"]`);
-    if (!row) return;
-
-    try {
-        // Get full experiment data from the data attribute
-        const experimentDataStr = row.getAttribute('data-experiment-data');
-        if (experimentDataStr) {
-            const experiment = JSON.parse(experimentDataStr);
-            populateViewModalFull(experiment);
-        } else {
-            // Fallback to basic data from DOM
-            const proposal = row.querySelector('.experiment-proposal')?.textContent.trim() || '';
-            const experimentNumber = row.querySelector('.experiment-id')?.textContent.trim() || '';
-            const title = row.querySelector('.experiment-title-text')?.textContent.trim() || '';
-            const statusBadge = row.querySelector('.status-badge');
-            const dataPath = row.getAttribute('data-user-folder') || '';
-            populateViewModalBasic(title, experimentNumber, proposal, statusBadge, dataPath);
-        }
-    } catch (error) {
-        console.error('Error parsing experiment data:', error);
-        // Fallback to basic data from DOM
-        const proposal = row.querySelector('.experiment-proposal')?.textContent.trim() || '';
-        const experimentNumber = row.querySelector('.experiment-id')?.textContent.trim() || '';
-        const title = row.querySelector('.experiment-title-text')?.textContent.trim() || '';
-        const statusBadge = row.querySelector('.status-badge');
-        const dataPath = row.getAttribute('data-user-folder') || '';
-        populateViewModalBasic(title, experimentNumber, proposal, statusBadge, dataPath);
-    }
-
-    if (!experimentViewModal) {
-        const viewEl = document.getElementById('experimentViewModal');
-        if (viewEl) experimentViewModal = new bootstrap.Modal(viewEl);
-    }
-    if (experimentViewModal) experimentViewModal.show();
-}
-
-// Populate view modal with basic information (fallback)
-function populateViewModalBasic(title, experimentNumber, proposal, statusBadge, dataPath) {
-    const titleEl = document.getElementById('detailViewTitle');
-    const esafEl = document.getElementById('detailViewExperimentNumber');
-    const proposalEl = document.getElementById('detailViewProposal');
-    const statusEl = document.getElementById('detailViewStatus');
-    const beamlineEl = document.getElementById('detailViewBeamline');
-    const descriptionEl = document.getElementById('detailViewDescription');
-    const dataPathEl = document.getElementById('detailViewDataPath');
-    const startDateEl = document.getElementById('detailViewStartDate');
-    const endDateEl = document.getElementById('detailViewEndDate');
-    const spokespersonEl = document.getElementById('detailViewSpokesperson');
-    const beamlineContactEl = document.getElementById('detailViewBeamlineContact');
-    const seesDoiEl = document.getElementById('detailViewSeesDoi');
-    const apsDoiEl = document.getElementById('detailViewApsDoi');
-    const esafPdfEl = document.getElementById('detailViewEsafPdf');
-    const pvlogFileEl = document.getElementById('detailViewPvlogFile');
-
-    if (titleEl) titleEl.textContent = title || 'N/A';
-    if (esafEl) esafEl.textContent = experimentNumber || 'N/A';
-    if (proposalEl) proposalEl.textContent = proposal || 'N/A';
-    if (statusEl) {
-        statusEl.innerHTML = '';
-        if (statusBadge) {
-            const clone = statusBadge.cloneNode(true);
-            statusEl.appendChild(clone);
-        } else {
-            statusEl.textContent = 'N/A';
-        }
-    }
-
-    // Set data path from experiment data or N/A
-    if (dataPathEl) {
-        dataPathEl.textContent = (dataPath && dataPath.trim() !== '') ? dataPath : 'N/A';
-    }
-
-    // Set other fields to N/A for now
-    if (beamlineEl) beamlineEl.textContent = 'N/A';
-    if (descriptionEl) descriptionEl.textContent = 'N/A';
-    if (startDateEl) startDateEl.textContent = 'N/A';
-    if (endDateEl) endDateEl.textContent = 'N/A';
-    if (spokespersonEl) spokespersonEl.textContent = 'N/A';
-    if (beamlineContactEl) beamlineContactEl.textContent = 'N/A';
-    if (seesDoiEl) seesDoiEl.textContent = 'N/A';
-    if (apsDoiEl) apsDoiEl.textContent = 'N/A';
-    if (esafPdfEl) esafPdfEl.textContent = 'N/A';
-    if (pvlogFileEl) pvlogFileEl.textContent = 'N/A';
-}
-
-// Populate view modal with full experiment data
-function populateViewModalFull(experiment) {
+// Populate read-only experiment details with full data
+function populateViewDetails(experiment) {
     const titleEl = document.getElementById('detailViewTitle');
     const esafEl = document.getElementById('detailViewExperimentNumber');
     const proposalEl = document.getElementById('detailViewProposal');
@@ -806,10 +854,7 @@ function populateViewModalFull(experiment) {
     if (statusEl) {
         statusEl.innerHTML = '';
         if (experiment.process_status) {
-            const badge = document.createElement('span');
-            badge.className = `status-badge status-${experiment.process_status.toLowerCase().replace(/\s+/g, '-')}`;
-            badge.textContent = experiment.process_status;
-            statusEl.appendChild(badge);
+            statusEl.appendChild(createStatusBadge(experiment.process_status));
         } else {
             statusEl.textContent = 'N/A';
         }
@@ -897,34 +942,15 @@ function initializeTableHandlers() {
     const tableBody = document.getElementById('experimentsTableBody');
     if (!tableBody) return;
     
-    // Handle view and edit button clicks
+    // Open view modal when clicking a row
     tableBody.addEventListener('click', (event) => {
-        if (event.target.closest('.btn-view')) {
-            const experimentId = event.target.closest('.btn-view').getAttribute('data-experiment-id');
-            openExperimentViewModal(experimentId);
-        } else if (event.target.closest('.btn-edit')) {
-            const experimentId = event.target.closest('.btn-edit').getAttribute('data-experiment-id');
-            openExperimentModal(experimentId, 'edit');
-        }
+        const row = event.target.closest('.experiment-row');
+        if (!row) return;
+
+        showExperimentView(row.getAttribute('data-experiment-id'));
     });
     
     // No bulk selection or processing for now
-}
-
-// Fetch acknowledgment options from the server
-function fetchAcknowledgmentOptions() {
-    fetch('/api/v1/get_acknowledgments')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Failed to fetch acknowledgments');
-            }
-            return response.json();
-        })
-        .then(data => {
-            acknowledgmentOptions = data;
-            // Acknowledgments are already rendered in the template
-        })
-        .catch(error => console.error('Error fetching acknowledgment options:', error));
 }
 
 // Path validation with debouncing
@@ -1024,6 +1050,56 @@ function validateDataPath(path) {
 }
 
 
+function updateDashboardVisibleCount() {
+    const countEl = document.getElementById('dashboardVisibleCount');
+    const tableBody = document.getElementById('experimentsTableBody');
+    if (!countEl || !tableBody) return;
+
+    const rows = tableBody.querySelectorAll('.experiment-row');
+    let visible = 0;
+    rows.forEach(row => {
+        if (row.style.display !== 'none') {
+            visible++;
+        }
+    });
+    countEl.textContent = visible;
+}
+
+function initializeSidebar() {
+    const dashboard = document.querySelector('.dashboard');
+    const trigger = document.getElementById('sidebarTrigger');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    if (!dashboard || !trigger) return;
+
+    const closeSidebar = () => {
+        dashboard.classList.remove('sidebar-open');
+        if (backdrop) backdrop.hidden = true;
+    };
+
+    const openSidebar = () => {
+        dashboard.classList.add('sidebar-open');
+        if (backdrop) backdrop.hidden = false;
+    };
+
+    trigger.addEventListener('click', () => {
+        if (dashboard.classList.contains('sidebar-open')) {
+            closeSidebar();
+        } else {
+            openSidebar();
+        }
+    });
+
+    if (backdrop) {
+        backdrop.addEventListener('click', closeSidebar);
+    }
+
+    window.addEventListener('resize', () => {
+        if (window.innerWidth >= 992) {
+            closeSidebar();
+        }
+    });
+}
+
 // Search functionality
 let searchTimeout = null;
 
@@ -1047,6 +1123,8 @@ function initializeSearchFunctionality() {
 
 function performClientSideSearch(searchTerm) {
     const tableBody = document.getElementById('experimentsTableBody');
+    if (!tableBody) return;
+
     const rows = tableBody.querySelectorAll('.experiment-row');
     const term = searchTerm.toLowerCase().trim();
     
@@ -1056,11 +1134,11 @@ function performClientSideSearch(searchTerm) {
             return;
         }
         
-        // Search across proposal, experiment ID, spokesperson, and title
-        const proposal = row.querySelector('.experiment-proposal').textContent.toLowerCase();
-        const experimentId = row.querySelector('.experiment-id').textContent.toLowerCase();
-        const spokesperson = row.querySelector('.experiment-spokesperson').textContent.toLowerCase();
-        const title = row.querySelector('.experiment-title').textContent.toLowerCase();
+        const expData = JSON.parse(row.getAttribute('data-experiment-data') || '{}');
+        const proposal = String(expData.proposal || '').toLowerCase();
+        const experimentId = String(expData.id || '').toLowerCase();
+        const spokesperson = String(expData.spokesperson_name || '').toLowerCase();
+        const title = String(expData.title || '').toLowerCase();
         
         const matches = proposal.includes(term) || 
                        experimentId.includes(term) || 
@@ -1069,31 +1147,35 @@ function performClientSideSearch(searchTerm) {
         
         row.style.display = matches ? '' : 'none';
     });
+
+    updateDashboardVisibleCount();
 }
 
 // Auto-submit filter form on dropdown change
 function initializeFilterFormAutoSubmit() {
     const filterForm = document.getElementById('filterForm');
-    const stationSelect = document.getElementById('stationSelect');
     const techniqueSelect = document.getElementById('techniqueSelect');
     const clearFiltersBtn = document.getElementById('clearFiltersBtn');
     
     if (filterForm) {
         const selects = filterForm.querySelectorAll('select');
+
+        function updateFilterPillState(select) {
+            select.classList.toggle('filter-active', !!select.value);
+        }
+
         selects.forEach(select => {
+            updateFilterPillState(select);
             select.addEventListener('change', () => {
-                // If this is the technique select, update the data path dropdown if modal is open
+                updateFilterPillState(select);
                 if (select === techniqueSelect && currentEditingExperiment) {
                     populateDataPathDropdown(currentEditingExperiment);
-                    
-                    // Also update the data path field with the new technique's base_dir
                     const dataPathInput = document.getElementById('dataPath');
                     if (dataPathInput && (!dataPathInput.value || dataPathInput.value.trim() === '')) {
                         const prepopulatedPath = getSelectedTechniqueBasePath();
                         if (prepopulatedPath) {
                             const populatedPath = populateDataPathTemplate(prepopulatedPath);
                             dataPathInput.value = populatedPath;
-                            // Trigger validation
                             debounceValidation();
                         }
                     }
@@ -1196,20 +1278,19 @@ function sortTableByState(tableId) {
 }
 
 function getCellValue(row, column) {
+    const expData = JSON.parse(row.getAttribute('data-experiment-data') || '{}');
     switch (column) {
         case 'proposal':
-            return row.querySelector('.experiment-proposal')?.textContent.trim() || '';
+            return String(expData.proposal || '');
         case 'experiment':
-            // Convert ESAF to number for proper sorting
-            const esafText = row.querySelector('.experiment-id')?.textContent.trim() || '0';
-            return parseInt(esafText, 10) || 0;
+            return parseInt(expData.id, 10) || 0;
         case 'spokesperson':
-            return row.querySelector('.experiment-spokesperson')?.textContent.trim().toLowerCase() || '';
+            return String(expData.spokesperson_name || '').toLowerCase();
         case 'title':
-            return row.querySelector('.experiment-title-text')?.textContent.trim().toLowerCase() || '';
+            return String(expData.title || '').toLowerCase();
         case 'status':
             return row.querySelector('.status-badge')?.textContent.trim().toLowerCase() || '';
-        default: 
+        default:
             return '';
     }
 }
@@ -1228,17 +1309,7 @@ function updateExperimentStatusBadge(experimentId, newStatus) {
     
     // Update the badge text and CSS class
     statusBadge.textContent = newStatus;
-    
-    // Remove existing status-* classes but keep the base 'status-badge' class
-    const classList = statusBadge.className.split(' ');
-    const filteredClasses = classList.filter(cls => !cls.startsWith('status-') || cls === 'status-badge');
-    
-    // Add new status class
-    const statusClass = `status-${newStatus.toLowerCase().replace(/\s+/g, '-')}`;
-    filteredClasses.push(statusClass);
-    
-    // Apply the updated class list
-    statusBadge.className = filteredClasses.join(' ');
+    statusBadge.className = `status-badge ${statusCssClass(newStatus)}`;
     
     // Add a subtle animation to indicate the change
     statusBadge.style.transition = 'all 0.3s ease';
@@ -1349,13 +1420,14 @@ function setDefaultSorting() {
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', () => {
-    fetchAcknowledgmentOptions();
-    initializeExperimentModal();
+    initializeExperimentViews();
     initializeTableHandlers();
     initializeFilterFormAutoSubmit();
     initializeSortHandlers();
     initializeSearchFunctionality();
+    initializeSidebar();
     
     // Set default sorting by ESAF column
     setDefaultSorting();
+    updateDashboardVisibleCount();
 });

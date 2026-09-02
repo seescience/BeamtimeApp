@@ -19,7 +19,7 @@ from typing import Dict, List, Optional, Tuple
 
 from flask import current_app, session
 from flask_login import UserMixin
-from ldap3 import ALL, MODIFY_REPLACE, Connection, Server, Tls
+from ldap3 import ALL, Connection, Server, Tls
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -245,49 +245,6 @@ class LDAPAuth:
                 except Exception as e:
                     logger.warning(f"Error closing LDAP connection during cleanup: {e}")
 
-    def get_user_info(self, username: str) -> Optional[User]:
-        """Get user information from LDAP without authentication."""
-        connection = None
-        try:
-            connection = self._create_connection()
-            user_data = self._search_user(connection, username)
-
-            if not user_data:
-                return None
-
-            attributes = user_data["attributes"]
-
-            user = User(
-                username=username,
-                email=attributes.get(self.config.user_email_attr, [""])[0] if attributes.get(self.config.user_email_attr) else "",
-                first_name=attributes.get(self.config.user_first_name_attr, [""])[0] if attributes.get(self.config.user_first_name_attr) else "",
-                last_name=attributes.get(self.config.user_last_name_attr, [""])[0] if attributes.get(self.config.user_last_name_attr) else "",
-                display_name=attributes.get(self.config.user_display_name_attr, [""])[0] if attributes.get(self.config.user_display_name_attr) else "",
-                dn=user_data["dn"],
-                groups=attributes.get("memberOf", []),
-            )
-
-            return user
-
-        except Exception as e:
-            logger.error(f"Error getting user info for {username}: {e}")
-            return None
-        finally:
-            if connection:
-                try:
-                    connection.unbind()
-                except Exception as e:
-                    logger.warning(f"Error closing LDAP connection during cleanup: {e}")
-
-    def test_connection(self) -> Tuple[bool, str]:
-        """Test LDAP connection and return status."""
-        try:
-            connection = self._create_connection()
-            connection.unbind()
-            return True, "LDAP connection successful"
-        except Exception as e:
-            return False, f"LDAP connection failed: {str(e)}"
-
 
 class AuthService:
     """Authentication service providing business logic for user authentication."""
@@ -341,39 +298,8 @@ class AuthService:
             return False, None
 
     @staticmethod
-    def get_user_info(username: str) -> Optional[User]:
-        """Get user information from LDAP without authentication."""
-        ldap_auth = AuthService.get_ldap_auth()
-
-        if not ldap_auth:
-            logger.error("User info requested but LDAP is not configured")
-            return None
-
-        try:
-            return ldap_auth.get_user_info(username)
-        except Exception as e:
-            logger.error(f"Error getting user info for {username}: {e}")
-            return None
-
-    @staticmethod
-    def cache_user(user: User) -> None:
-        """Cache user in memory (replace with database in production)."""
-        cache_user(user)
-        logger.debug(f"User cached: {user.username}")
-
-    @staticmethod
     def clear_user_cache(user_id: str) -> None:
-        """Remove user from cache."""
         clear_user_cache(user_id)
-        logger.debug(f"User cache cleared: {user_id}")
-
-    @staticmethod
-    def get_user_by_id(user_id: str) -> Optional[User]:
-        """
-        User loader function for Flask-Login.
-        In production, this should be replaced with database storage.
-        """
-        return get_user_by_id(user_id)
 
 
 def get_user_by_id(user_id: str) -> Optional[User]:
