@@ -7,22 +7,34 @@
 
     <aside class="dashboard-sidebar" id="dashboardSidebar">
         <header class="dash-guild-header">
-            <img src="https://seescience.org/wp-content/uploads/2024/07/NSF-SEES-Logo.png"
-                 alt="NSF SEES Logo"
-                 class="dash-guild-logo">
+            <div class="dash-guild-identity">
+                <img src="https://seescience.org/wp-content/uploads/2024/07/NSF-SEES-Logo.png"
+                     alt="NSF SEES Logo"
+                     class="dash-guild-logo">
+                <span class="dash-guild-name">Beamtime</span>
+            </div>
         </header>
 
         <div class="dash-sidebar-scroll">
+            <nav class="dash-nav" aria-label="Main navigation">
+                <a href="/" class="dash-nav-item active" aria-current="page">
+                    <i class="bi bi-grid-3x2-gap-fill dash-nav-item-icon" aria-hidden="true"></i>
+                    <span class="dash-nav-item-label">Experiments</span>
+                    <span class="dash-nav-badge">{{ total_count }}</span>
+                </a>
+            </nav>
+            <div class="dash-nav-divider"></div>
+
             <form id="filterForm" method="get" action="/" class="dash-filters" autocomplete="off">
                 <div class="dash-section-label">
-                    <span>Filters</span>
+                    <span><i class="bi bi-sliders me-1" aria-hidden="true"></i>Filters</span>
                     <button type="button" class="dash-section-action" id="clearFiltersBtn" aria-label="Reset filters" title="Reset filters">
                         <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
                     </button>
                 </div>
 
                 <label class="dash-filter-row" for="runSelect">
-                    <span class="dash-sr-only">Run</span>
+                    <span class="dash-filter-label">Run</span>
                     <select id="runSelect" name="run" class="dash-filter-select" aria-label="Run">
                         <option value="">All runs</option>
                         {% for run in runs %}
@@ -32,7 +44,7 @@
                 </label>
 
                 <label class="dash-filter-row" for="beamlineSelect">
-                    <span class="dash-sr-only">Beamline</span>
+                    <span class="dash-filter-label">Beamline</span>
                     <select id="beamlineSelect" name="beamline" class="dash-filter-select" aria-label="Beamline">
                         <option value="">All beamlines</option>
                         {% for beamline in beamlines %}
@@ -42,7 +54,7 @@
                 </label>
 
                 <label class="dash-filter-row" for="techniqueSelect">
-                    <span class="dash-sr-only">Technique</span>
+                    <span class="dash-filter-label">Technique</span>
                     <select id="techniqueSelect" name="technique" class="dash-filter-select" aria-label="Technique">
                         <option value="">All techniques</option>
                         {% for technique in techniques %}
@@ -52,7 +64,7 @@
                 </label>
 
                 <label class="dash-filter-row" for="statusSelect">
-                    <span class="dash-sr-only">Status</span>
+                    <span class="dash-filter-label">Status</span>
                     <select id="statusSelect" name="status" class="dash-filter-select" aria-label="Status">
                         <option value="">All statuses</option>
                         {% for status in process_statuses %}
@@ -65,7 +77,11 @@
 
         <div class="dash-user-panel">
             {% if current_user.is_authenticated %}
-            <span class="dash-user-name">{{ current_user.display_name or current_user.username }}</span>
+            {% set uname = current_user.display_name or current_user.username or '' %}
+            {% set uparts = uname.split() %}
+            {% set uinit = (uparts[0][0] if uparts and uparts[0] else '?') + (uparts[-1][0] if uparts|length > 1 else '') %}
+            <span class="user-panel-avatar">{{ uinit | upper }}</span>
+            <span class="dash-user-name">{{ uname }}</span>
             {% endif %}
             <div class="dash-user-tools">
                 <a href="{{ url_for('auth.logout') }}" class="dash-user-tool" title="Logout" aria-label="Logout">
@@ -105,29 +121,42 @@
                     <table class="dash-table">
                         <thead>
                             <tr>
-                                <th scope="col" class="sortable-header" data-column="proposal">Proposal</th>
-                                <th scope="col" class="sortable-header" data-column="experiment">ESAF</th>
-                                <th scope="col" class="sortable-header" data-column="spokesperson">Spokesperson</th>
-                                <th scope="col" class="sortable-header" data-column="title">Title</th>
+                                <th scope="col" class="sortable-header exp-th-status" data-column="status">Status</th>
+                                <th scope="col" class="sortable-header exp-th-main" data-column="title">Experiment</th>
+                                <th scope="col" class="sortable-header exp-th-person" data-column="spokesperson">Spokesperson</th>
                             </tr>
                         </thead>
                         <tbody id="experimentsTableBody">
                         {% for experiment in experiments %}
+                        {% set status_class = (experiment.process_status or 'unknown').lower().replace(' ', '-') %}
+                        {% set name_parts = (experiment.spokesperson_name or '').split() %}
+                        {% set av1 = name_parts[0][0] if name_parts and name_parts[0] else '?' %}
+                        {% set av2 = name_parts[-1][0] if name_parts | length > 1 else '' %}
                         <tr class="experiment-row"
                             data-experiment-id="{{ experiment.id }}"
                             data-run="{{ experiment.run_id }}"
                             data-beamline="{{ experiment.beamline_id }}"
                             data-user-folder="{{ experiment.folder or '' }}"
                             data-experiment-data='{{ experiment | tojson | safe }}'>
-                            <td class="experiment-proposal">{{ experiment.proposal or 'N/A' }}</td>
-                            <td class="experiment-id">{{ experiment.id }}</td>
-                            <td class="experiment-spokesperson">{{ experiment.spokesperson_name or 'N/A' }}</td>
-                            <td class="experiment-title">
-                                <div class="experiment-title-container">
-                                    <span class="experiment-title-text">{{ experiment.title }}</span>
-                                    <span class="status-badge status-{{ (experiment.process_status or 'unknown').lower().replace(' ', '-') }}">
-                                        {{ experiment.process_status or 'Unknown' }}
-                                    </span>
+                            <td class="exp-col-status">
+                                <span class="status-badge status-{{ status_class }}">{{ experiment.process_status or 'Unknown' }}</span>
+                            </td>
+                            <td class="exp-col-main">
+                                <span class="experiment-title-text">{{ experiment.title }}</span>
+                                <span class="exp-row-meta">{{ experiment.beamline_name or '—' }} &middot; ESAF {{ experiment.id }} &middot; Proposal {{ experiment.proposal or 'N/A' }}</span>
+                            </td>
+                            <td class="exp-col-person">
+                                <span class="exp-avatar">{{ av1 }}{{ av2 }}</span>
+                                <span class="exp-person-name">{{ experiment.spokesperson_name or 'N/A' }}</span>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr class="exp-empty-row">
+                            <td colspan="3">
+                                <div class="exp-empty-state">
+                                    <i class="bi bi-search exp-empty-icon" aria-hidden="true"></i>
+                                    <p class="exp-empty-title">No experiments found</p>
+                                    <p class="exp-empty-body">Try adjusting your filters or search query.</p>
                                 </div>
                             </td>
                         </tr>
@@ -139,105 +168,89 @@
 
             <div id="experimentDetailView" class="dash-detail-view" hidden>
                 <div class="dash-detail-toolbar">
-                    <button type="button" class="btn btn-outline-secondary btn-sm" id="backToExperimentsBtn">
-                        <i class="bi bi-arrow-left"></i> Back to experiments
+                    <button type="button" id="backToExperimentsBtn" aria-label="Back">
+                        <i class="bi bi-arrow-left"></i>
                     </button>
                     <div class="dash-detail-actions">
-                        <button type="button" class="btn btn-primary btn-sm" id="detailEditBtn">
-                            <i class="bi bi-pencil"></i> Edit
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="detailEditBtn">
+                            <i class="bi bi-pencil me-1"></i>Edit
                         </button>
-                        <button type="button" class="btn btn-primary btn-sm" id="addToQueueBtn" hidden>
-                            <i class="bi bi-plus-circle"></i> Add to Queue
+                        <button type="button" class="btn btn-sm btn-primary" id="addToQueueBtn" hidden>
+                            <i class="bi bi-plus-circle me-1"></i>Add to Queue
                         </button>
                     </div>
                 </div>
 
                 <div id="experimentViewPanel" class="dash-detail-scroll">
-                    <div class="container-fluid">
-                        <div class="row mb-3">
-                            <div class="col-md-12">
-                                <div class="form-label fw-bold">Title</div>
-                                <div id="detailViewTitle"></div>
-                            </div>
+                    <div class="detail-title-section">
+                        <div class="detail-title-status" id="detailViewStatus"></div>
+                        <h2 class="detail-title" id="detailViewTitle"></h2>
+                    </div>
+                    <div class="detail-props">
+                        <div class="detail-prop">
+                            <span class="detail-prop-label">Beamline</span>
+                            <div class="detail-prop-value" id="detailViewBeamline"></div>
                         </div>
-
-                        <div class="row mb-3">
-                            <div class="col-md-4">
-                                <div class="mb-2">
-                                    <div class="form-label fw-bold">Status</div>
-                                    <div id="detailViewStatus"></div>
-                                </div>
-                                <div class="mb-2">
-                                    <div class="form-label fw-bold">Start Date</div>
-                                    <div id="detailViewStartDate"></div>
-                                </div>
-                                <div class="mb-2">
-                                    <div class="form-label fw-bold">Spokesperson</div>
-                                    <div id="detailViewSpokesperson"></div>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="mb-2">
-                                    <div class="form-label fw-bold">Beamline</div>
-                                    <div id="detailViewBeamline"></div>
-                                </div>
-                                <div class="mb-2">
-                                    <div class="form-label fw-bold">End Date</div>
-                                    <div id="detailViewEndDate"></div>
-                                </div>
-                                <div class="mb-2">
-                                    <div class="form-label fw-bold">Beamline Contact</div>
-                                    <div id="detailViewBeamlineContact"></div>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="mb-2">
-                                    <div class="form-label fw-bold">Proposal</div>
-                                    <div id="detailViewProposal"></div>
-                                </div>
-                                <div class="mb-2">
-                                    <div class="form-label fw-bold">ESAF</div>
-                                    <div id="detailViewExperimentNumber"></div>
-                                </div>
-                                <div class="mb-2">
-                                    <div class="form-label fw-bold">ESAF PDF</div>
-                                    <div id="detailViewEsafPdf"></div>
-                                </div>
-                            </div>
+                        <div class="detail-prop">
+                            <span class="detail-prop-label">Start date</span>
+                            <div class="detail-prop-value" id="detailViewStartDate"></div>
                         </div>
-
-                        <div class="row mb-3">
-                            <div class="col-md-12">
-                                <div class="form-label fw-bold">Description</div>
-                                <div id="detailViewDescription" class="text-break"></div>
-                            </div>
+                        <div class="detail-prop">
+                            <span class="detail-prop-label">End date</span>
+                            <div class="detail-prop-value" id="detailViewEndDate"></div>
                         </div>
-
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <div class="form-label fw-bold">Data Path</div>
-                                <div id="detailViewDataPath" class="font-monospace text-break"></div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-label fw-bold">PVLog File</div>
-                                <div id="detailViewPvlogFile" class="font-monospace text-break"></div>
-                            </div>
+                        <div class="detail-prop-sep"></div>
+                        <div class="detail-prop">
+                            <span class="detail-prop-label">Proposal</span>
+                            <div class="detail-prop-value" id="detailViewProposal"></div>
                         </div>
-
-                        <div class="row mb-2">
-                            <div class="col-md-6">
-                                <div class="form-label fw-bold">SEES DOI</div>
-                                <div id="detailViewSeesDoi"></div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-label fw-bold">APS DOI</div>
-                                <div id="detailViewApsDoi"></div>
-                            </div>
+                        <div class="detail-prop">
+                            <span class="detail-prop-label">ESAF</span>
+                            <div class="detail-prop-value" id="detailViewExperimentNumber"></div>
+                        </div>
+                        <div class="detail-prop">
+                            <span class="detail-prop-label">ESAF PDF</span>
+                            <div class="detail-prop-value" id="detailViewEsafPdf"></div>
+                        </div>
+                        <div class="detail-prop-sep"></div>
+                        <div class="detail-prop">
+                            <span class="detail-prop-label">Spokesperson</span>
+                            <div class="detail-prop-value" id="detailViewSpokesperson"></div>
+                        </div>
+                        <div class="detail-prop">
+                            <span class="detail-prop-label">Beamline contact</span>
+                            <div class="detail-prop-value" id="detailViewBeamlineContact"></div>
+                        </div>
+                        <div class="detail-prop-sep"></div>
+                        <div class="detail-prop detail-prop--full">
+                            <span class="detail-prop-label">Description</span>
+                            <div class="detail-prop-value text-break" id="detailViewDescription"></div>
+                        </div>
+                        <div class="detail-prop-sep"></div>
+                        <div class="detail-prop">
+                            <span class="detail-prop-label">Data path</span>
+                            <div class="detail-prop-value font-monospace text-break" id="detailViewDataPath"></div>
+                        </div>
+                        <div class="detail-prop">
+                            <span class="detail-prop-label">PVLog file</span>
+                            <div class="detail-prop-value font-monospace text-break" id="detailViewPvlogFile"></div>
+                        </div>
+                        <div class="detail-prop-sep"></div>
+                        <div class="detail-prop">
+                            <span class="detail-prop-label">SEES DOI</span>
+                            <div class="detail-prop-value" id="detailViewSeesDoi"></div>
+                        </div>
+                        <div class="detail-prop">
+                            <span class="detail-prop-label">APS DOI</span>
+                            <div class="detail-prop-value" id="detailViewApsDoi"></div>
                         </div>
                     </div>
                 </div>
 
                 <div id="experimentEditPanel" class="dash-detail-scroll" hidden>
+                    <div class="edit-panel-header">
+                        <h3 class="edit-panel-title">Edit Experiment</h3>
+                    </div>
                     <form id="experimentForm">
                         <input type="hidden" id="experimentId" name="experimentId">
 
@@ -394,21 +407,22 @@
                             </div>
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="createDoi" name="createDoi" checked>
-                                    <label class="form-check-label" for="createDoi">
-                                        Create DOI for this experiment
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-check" id="draftDoiContainer">
-                                    <input class="form-check-input" type="checkbox" id="draftDoi" name="draftDoi">
-                                    <label class="form-check-label" for="draftDoi">
-                                        Create as draft DOI
-                                    </label>
+                        <div class="row mb-2">
+                            <div class="col-12">
+                                <label class="form-label">DOI Options</label>
+                                <div class="doi-options-group">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="createDoi" name="createDoi" checked>
+                                        <label class="form-check-label" for="createDoi">
+                                            Create DOI for this experiment
+                                        </label>
+                                    </div>
+                                    <div class="form-check" id="draftDoiContainer">
+                                        <input class="form-check-input" type="checkbox" id="draftDoi" name="draftDoi">
+                                        <label class="form-check-label" for="draftDoi">
+                                            Create as draft DOI
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
                         </div>

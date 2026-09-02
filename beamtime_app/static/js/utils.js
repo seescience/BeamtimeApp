@@ -261,19 +261,6 @@ function populateDataPathTemplate(template) {
                 }
             }
             
-            // Fallback to DOM elements if JSON data not available
-            if (!experimentDataStr) {
-                const spokespersonCell = row.querySelector('.experiment-spokesperson');
-                if (spokespersonCell) {
-                    const spokespersonName = spokespersonCell.textContent.trim();
-                    if (spokespersonName && spokespersonName !== 'N/A') {
-                        const nameParts = spokespersonName.split(' ');
-                        if (nameParts.length > 1) {
-                            userLastName = nameParts[nameParts.length - 1].toLowerCase();
-                        }
-                    }
-                }
-            }
         }
     }
     
@@ -554,13 +541,16 @@ function handleExperimentBack() {
 }
 
 function showExperimentsList() {
+    const panel = document.querySelector('.dash-panel');
     const listView = document.getElementById('experimentsListView');
     const detailView = document.getElementById('experimentDetailView');
     const totalCount = document.querySelectorAll('#experimentsTableBody .experiment-row').length;
     const visibleCount = document.getElementById('dashboardVisibleCount')?.textContent || totalCount;
 
+    if (panel) panel.classList.remove('panel-has-detail');
     if (listView) listView.hidden = false;
     if (detailView) detailView.hidden = true;
+    document.querySelectorAll('.experiment-row.row-active').forEach(r => r.classList.remove('row-active'));
 
     currentViewExperimentId = null;
     currentEditingExperiment = null;
@@ -575,6 +565,7 @@ function showExperimentsList() {
 }
 
 function showExperimentView(experimentId) {
+    const panel = document.querySelector('.dash-panel');
     const listView = document.getElementById('experimentsListView');
     const detailView = document.getElementById('experimentDetailView');
     const viewPanel = document.getElementById('experimentViewPanel');
@@ -585,8 +576,13 @@ function showExperimentView(experimentId) {
     currentViewExperimentId = experimentId;
     currentEditingExperiment = null;
 
-    if (listView) listView.hidden = true;
+    if (panel) panel.classList.add('panel-has-detail');
+    if (listView) listView.hidden = false;
     if (detailView) detailView.hidden = false;
+
+    document.querySelectorAll('.experiment-row.row-active').forEach(r => r.classList.remove('row-active'));
+    const selectedRow = document.querySelector(`tr[data-experiment-id="${experimentId}"]`);
+    if (selectedRow) selectedRow.classList.add('row-active');
     if (viewPanel) viewPanel.hidden = false;
     if (editPanel) editPanel.hidden = true;
     if (editBtn) editBtn.hidden = false;
@@ -594,9 +590,14 @@ function showExperimentView(experimentId) {
 
     populateExperimentView(experimentId);
 
-    const row = document.querySelector(`tr[data-experiment-id="${experimentId}"]`);
-    const title = row?.querySelector('.experiment-title-text')?.textContent.trim() || `ESAF ${experimentId}`;
-    setDashboardTopbar(title, `ESAF ${experimentId}`);
+    const metaEl = document.querySelector('.dash-page-meta');
+    const lastSynced = metaEl?.dataset.lastSynced || 'N/A';
+    const totalCount = document.querySelectorAll('#experimentsTableBody .experiment-row').length;
+    const visibleCount = document.getElementById('dashboardVisibleCount')?.textContent || totalCount;
+    setDashboardTopbar(
+        'Experiments',
+        `<span id="dashboardVisibleCount">${visibleCount}</span> of ${totalCount} shown &middot; Synced ${lastSynced}`
+    );
 }
 
 function showExperimentEdit(experimentId) {
@@ -626,9 +627,14 @@ function showExperimentEdit(experimentId) {
     loadExperimentData(experimentId, 'edit');
     populateDataPathDropdown(experimentId);
 
-    const row = document.querySelector(`tr[data-experiment-id="${experimentId}"]`);
-    const title = row?.querySelector('.experiment-title-text')?.textContent.trim() || `ESAF ${experimentId}`;
-    setDashboardTopbar(title, 'Edit and queue experiment');
+    const metaEl2 = document.querySelector('.dash-page-meta');
+    const lastSynced2 = metaEl2?.dataset.lastSynced || 'N/A';
+    const totalCount2 = document.querySelectorAll('#experimentsTableBody .experiment-row').length;
+    const visibleCount2 = document.getElementById('dashboardVisibleCount')?.textContent || totalCount2;
+    setDashboardTopbar(
+        'Experiments',
+        `<span id="dashboardVisibleCount">${visibleCount2}</span> of ${totalCount2} shown &middot; Synced ${lastSynced2}`
+    );
 }
 
 function populateExperimentView(experimentId) {
@@ -652,12 +658,11 @@ function populateExperimentView(experimentId) {
 function loadExperimentData(experimentId, mode = 'view') {
     const row = document.querySelector(`tr[data-experiment-id="${experimentId}"]`);
     if (!row) return;
-    
-    // Get data from the table row (new column order: Proposal, Experiment, Title)
-    const proposal = row.querySelector('.experiment-proposal').textContent.trim();
-    const experimentNumber = row.querySelector('.experiment-id').textContent.trim();
-    // Get clean title without status badge
-    const title = row.querySelector('.experiment-title-text').textContent.trim();
+
+    const expData = JSON.parse(row.getAttribute('data-experiment-data') || '{}');
+    const proposal = String(expData.proposal || '');
+    const experimentNumber = String(expData.id || '');
+    const title = String(expData.title || '');
     const userFolder = row.getAttribute('data-user-folder') || '';
     
     // Populate form fields
@@ -1129,11 +1134,11 @@ function performClientSideSearch(searchTerm) {
             return;
         }
         
-        // Search across proposal, experiment ID, spokesperson, and title
-        const proposal = row.querySelector('.experiment-proposal')?.textContent.toLowerCase() || '';
-        const experimentId = row.querySelector('.experiment-id')?.textContent.toLowerCase() || '';
-        const spokesperson = row.querySelector('.experiment-spokesperson')?.textContent.toLowerCase() || '';
-        const title = row.querySelector('.experiment-title-text')?.textContent.toLowerCase() || '';
+        const expData = JSON.parse(row.getAttribute('data-experiment-data') || '{}');
+        const proposal = String(expData.proposal || '').toLowerCase();
+        const experimentId = String(expData.id || '').toLowerCase();
+        const spokesperson = String(expData.spokesperson_name || '').toLowerCase();
+        const title = String(expData.title || '').toLowerCase();
         
         const matches = proposal.includes(term) || 
                        experimentId.includes(term) || 
@@ -1149,26 +1154,28 @@ function performClientSideSearch(searchTerm) {
 // Auto-submit filter form on dropdown change
 function initializeFilterFormAutoSubmit() {
     const filterForm = document.getElementById('filterForm');
-    const stationSelect = document.getElementById('stationSelect');
     const techniqueSelect = document.getElementById('techniqueSelect');
     const clearFiltersBtn = document.getElementById('clearFiltersBtn');
     
     if (filterForm) {
         const selects = filterForm.querySelectorAll('select');
+
+        function updateFilterPillState(select) {
+            select.classList.toggle('filter-active', !!select.value);
+        }
+
         selects.forEach(select => {
+            updateFilterPillState(select);
             select.addEventListener('change', () => {
-                // If this is the technique select, update the data path dropdown if modal is open
+                updateFilterPillState(select);
                 if (select === techniqueSelect && currentEditingExperiment) {
                     populateDataPathDropdown(currentEditingExperiment);
-                    
-                    // Also update the data path field with the new technique's base_dir
                     const dataPathInput = document.getElementById('dataPath');
                     if (dataPathInput && (!dataPathInput.value || dataPathInput.value.trim() === '')) {
                         const prepopulatedPath = getSelectedTechniqueBasePath();
                         if (prepopulatedPath) {
                             const populatedPath = populateDataPathTemplate(prepopulatedPath);
                             dataPathInput.value = populatedPath;
-                            // Trigger validation
                             debounceValidation();
                         }
                     }
@@ -1271,20 +1278,19 @@ function sortTableByState(tableId) {
 }
 
 function getCellValue(row, column) {
+    const expData = JSON.parse(row.getAttribute('data-experiment-data') || '{}');
     switch (column) {
         case 'proposal':
-            return row.querySelector('.experiment-proposal')?.textContent.trim() || '';
+            return String(expData.proposal || '');
         case 'experiment':
-            // Convert ESAF to number for proper sorting
-            const esafText = row.querySelector('.experiment-id')?.textContent.trim() || '0';
-            return parseInt(esafText, 10) || 0;
+            return parseInt(expData.id, 10) || 0;
         case 'spokesperson':
-            return row.querySelector('.experiment-spokesperson')?.textContent.trim().toLowerCase() || '';
+            return String(expData.spokesperson_name || '').toLowerCase();
         case 'title':
-            return row.querySelector('.experiment-title-text')?.textContent.trim().toLowerCase() || '';
+            return String(expData.title || '').toLowerCase();
         case 'status':
             return row.querySelector('.status-badge')?.textContent.trim().toLowerCase() || '';
-        default: 
+        default:
             return '';
     }
 }
