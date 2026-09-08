@@ -84,6 +84,9 @@
             <span class="dash-user-name">{{ uname }}</span>
             {% endif %}
             <div class="dash-user-tools">
+                <a href="https://seescience.github.io/BeamtimeApp/" target="_blank" rel="noopener noreferrer" class="dash-user-tool" title="Documentation" aria-label="Documentation">
+                    <i class="bi bi-book"></i>
+                </a>
                 <a href="{{ url_for('auth.logout') }}" class="dash-user-tool" title="Logout" aria-label="Logout">
                     <i class="bi bi-box-arrow-right"></i>
                 </a>
