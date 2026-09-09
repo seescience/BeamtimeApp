@@ -30,6 +30,9 @@ theme:
 extra_css:
   - stylesheets/extra.css
 
+extra_javascript:
+  - js/header-app-link.js
+
 nav:
   - Home: index.md
   - Logging In: login.md
