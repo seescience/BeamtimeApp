@@ -1,0 +1,53 @@
+site_name: BeamtimeApp
+site_description: Flask application for generating beamtime folders, DOI, and collection data links (Globus/Nextcloud) at APS sector 13.
+site_url: https://seescience.github.io/BeamtimeApp
+repo_url: https://github.com/seescience/BeamtimeApp
+repo_name: seescience/BeamtimeApp
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - js/header-app-link.js
+
+nav:
+  - Home: index.md
+  - Logging In: login.md
+  - Dashboard: dashboard.md
+  - Experiments: experiments.md
+  - PVLogger Configuration: pvlogger.md
+  - Queue: queue.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - tables
+  - attr_list
