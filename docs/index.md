@@ -2,6 +2,8 @@
 
 BeamtimeApp is a web application for managing beamtime experiments at the NSF SEES beamlines of the Advanced Photon Source (APS). It handles experiment metadata, data path configuration, PVLogger setup, and DOI/acknowledgment assignment — all in one place before experiments are queued for processing.
 
+The application is available at **[beamtime.seescience.org](https://beamtime.seescience.org/)**.
+
 ---
 
 ## What it does
