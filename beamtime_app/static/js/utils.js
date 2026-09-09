@@ -680,7 +680,7 @@ function loadExperimentData(experimentId, mode = 'view') {
     proposalInput.setAttribute('readonly', true);
 
     populateDataPathField(userFolder);
-    document.getElementById('createDoi').checked = mode !== 'edit';
+    document.getElementById('createDoi').checked = true;
     
     // Reset acknowledgments and PVLogger path
     clearFileSelection();
