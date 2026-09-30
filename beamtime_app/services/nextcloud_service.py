@@ -13,8 +13,6 @@
 # ----------------------------------------------------------------------------------
 
 import logging
-import secrets
-import string
 from contextlib import contextmanager
 
 from flask import current_app
@@ -73,16 +71,11 @@ def list_nextcloud_mounts() -> list:
         return occ.list_storages()
 
 
-def _generate_password(length: int = 16) -> str:
-    alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
-    return "".join(secrets.choice(alphabet) for _ in range(length))
-
-
 def create_nextcloud_user(uid: str, display_name: str, email: str) -> None:
-    """Create a new local Nextcloud user. OCC sends an activation email so the user sets their own password."""
+    """Create a new local Nextcloud user. Nextcloud generates a password and emails it to the user."""
     with _occ() as occ:
-        occ.create_user(uid, display_name, email, _generate_password())
-    logger.info(f"Nextcloud: created user '{uid}' ({display_name}), activation email sent to {email}")
+        occ.create_user(uid, display_name, email)
+    logger.info(f"Nextcloud: created user '{uid}' ({display_name}), credentials emailed to {email}")
 
 
 def search_nextcloud_users(query: str = "") -> list[dict]:
