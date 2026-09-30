@@ -626,6 +626,7 @@ function showExperimentEdit(experimentId) {
     clearValidationMessage();
     loadExperimentData(experimentId, 'edit');
     populateDataPathDropdown(experimentId);
+    resetNextcloudSection();
 
     const metaEl2 = document.querySelector('.dash-page-meta');
     const lastSynced2 = metaEl2?.dataset.lastSynced || 'N/A';
@@ -1418,6 +1419,130 @@ function setDefaultSorting() {
     sortTableByState('experimentsTableBody');
 }
 
+function initializeNextcloudSection() {
+    const addBtn = document.getElementById('addNextcloudRecipientBtn');
+    const shareBtn = document.getElementById('shareNextcloudBtn');
+
+    if (!addBtn && !shareBtn) return;
+
+    if (addBtn) addBtn.addEventListener('click', addNextcloudRecipient);
+    if (shareBtn) shareBtn.addEventListener('click', shareOnNextcloud);
+
+    // Keep nextcloudPath and mount name in sync with dataPath unless overridden
+    const dataPathEl = document.getElementById('dataPath');
+    const nextcloudPathEl = document.getElementById('nextcloudPath');
+    const mountNameEl = document.getElementById('nextcloudMountName');
+    if (dataPathEl && nextcloudPathEl) {
+        dataPathEl.addEventListener('input', () => {
+            const val = dataPathEl.value;
+            if (!nextcloudPathEl.dataset.userOverride) nextcloudPathEl.value = val;
+            if (mountNameEl && !mountNameEl.dataset.userOverride) mountNameEl.value = _lastPathSegment(val);
+        });
+        nextcloudPathEl.addEventListener('input', () => {
+            nextcloudPathEl.dataset.userOverride = '1';
+            if (mountNameEl && !mountNameEl.dataset.userOverride) mountNameEl.value = _lastPathSegment(nextcloudPathEl.value);
+        });
+        if (mountNameEl) mountNameEl.addEventListener('input', () => { mountNameEl.dataset.userOverride = '1'; });
+    }
+}
+
+function _lastPathSegment(path) {
+    if (!path) return '';
+    const parts = path.replace(/\/+$/, '').split('/');
+    return parts[parts.length - 1] || '';
+}
+
+function resetNextcloudSection() {
+    const container = document.getElementById('nextcloudRecipientsContainer');
+    const nextcloudPathEl = document.getElementById('nextcloudPath');
+    const mountNameEl = document.getElementById('nextcloudMountName');
+    const statusEl = document.getElementById('nextcloudShareStatus');
+    const dataPath = document.getElementById('dataPath')?.value || '';
+
+    if (container) container.innerHTML = '';
+    if (nextcloudPathEl) {
+        delete nextcloudPathEl.dataset.userOverride;
+        nextcloudPathEl.value = dataPath;
+    }
+    if (mountNameEl) {
+        delete mountNameEl.dataset.userOverride;
+        mountNameEl.value = _lastPathSegment(dataPath);
+    }
+    if (statusEl) {
+        statusEl.textContent = '';
+        statusEl.className = 'small';
+    }
+}
+
+function addNextcloudRecipient() {
+    const container = document.getElementById('nextcloudRecipientsContainer');
+    if (!container) return;
+
+    const row = document.createElement('div');
+    row.className = 'd-flex gap-2 align-items-center nextcloud-recipient-row';
+    row.innerHTML = `
+        <input type="text" class="form-control form-control-sm nextcloud-recipient-email" placeholder="Nextcloud username">
+        <button type="button" class="btn btn-sm btn-outline-danger" title="Remove" onclick="this.closest('.nextcloud-recipient-row').remove()">
+            <i class="bi bi-x-lg"></i>
+        </button>`;
+    container.appendChild(row);
+    row.querySelector('input').focus();
+}
+
+function shareOnNextcloud() {
+    const serverPath = document.getElementById('nextcloudPath')?.value.trim();
+    const mountPoint = document.getElementById('nextcloudMountName')?.value.trim();
+    const statusEl = document.getElementById('nextcloudShareStatus');
+    const shareBtn = document.getElementById('shareNextcloudBtn');
+
+    const users = Array.from(document.querySelectorAll('.nextcloud-recipient-email'))
+        .map(el => el.value.trim())
+        .filter(Boolean);
+
+    if (!serverPath) {
+        if (statusEl) { statusEl.textContent = 'Server path is required.'; statusEl.className = 'small text-danger'; }
+        return;
+    }
+    if (!mountPoint) {
+        if (statusEl) { statusEl.textContent = 'Mount name is required.'; statusEl.className = 'small text-danger'; }
+        return;
+    }
+    if (users.length === 0) {
+        if (statusEl) { statusEl.textContent = 'Add at least one Nextcloud user.'; statusEl.className = 'small text-danger'; }
+        return;
+    }
+
+    shareBtn.disabled = true;
+    if (statusEl) { statusEl.textContent = 'Creating mount…'; statusEl.className = 'small text-muted'; }
+
+    fetch('/api/v1/nextcloud_mount', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mount_point: mountPoint, server_path: serverPath, users }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        shareBtn.disabled = false;
+        if (data.success) {
+            if (statusEl) {
+                statusEl.textContent = `Mount '${mountPoint}' created for ${users.length} user(s).`;
+                statusEl.className = 'small text-success';
+            }
+            showNotification('success', `Nextcloud: mount '${mountPoint}' created successfully.`);
+        } else {
+            const msg = data.error || 'Mount creation failed.';
+            if (statusEl) { statusEl.textContent = msg; statusEl.className = 'small text-danger'; }
+            showNotification('error', `Nextcloud mount failed: ${msg}`);
+        }
+    })
+    .catch(err => {
+        shareBtn.disabled = false;
+        const msg = 'Request failed. Please try again.';
+        if (statusEl) { statusEl.textContent = msg; statusEl.className = 'small text-danger'; }
+        showNotification('error', `Nextcloud mount failed: ${err.message}`);
+    });
+}
+
 // Initialize the application
 document.addEventListener('DOMContentLoaded', () => {
     initializeExperimentViews();
@@ -1426,7 +1551,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeSortHandlers();
     initializeSearchFunctionality();
     initializeSidebar();
-    
+    initializeNextcloudSection();
+
     // Set default sorting by ESAF column
     setDefaultSorting();
     updateDashboardVisibleCount();

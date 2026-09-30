@@ -58,5 +58,13 @@ class BaseConfig:
     LDAP_REQUIRE_GROUP = os.getenv("LDAP_REQUIRE_GROUP", "false").lower() == "true"
     LDAP_AUTHORIZED_GROUPS = os.getenv("LDAP_AUTHORIZED_GROUPS")
 
+    # Nextcloud OCC configuration
+    NEXTCLOUD_OCC_CMD = os.getenv("NEXTCLOUD_OCC_CMD")
+    NEXTCLOUD_SSH_HOST = os.getenv("NEXTCLOUD_SSH_HOST")
+    NEXTCLOUD_SSH_USER = os.getenv("NEXTCLOUD_SSH_USER")
+    NEXTCLOUD_SSH_KEY = os.getenv("NEXTCLOUD_SSH_KEY")
+    NEXTCLOUD_SSH_PASSWORD = os.getenv("NEXTCLOUD_SSH_PASSWORD")
+    NEXTCLOUD_SSH_PORT = int(os.getenv("NEXTCLOUD_SSH_PORT", "22"))
+
     # Logging configuration
     FLASK_LOG_FILE = os.getenv("FLASK_LOG_FILE", "logs/beamtime_app.log")

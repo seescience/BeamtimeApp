@@ -431,6 +431,49 @@
                         </div>
 
                         <input type="hidden" id="selectedAcknowledgments" name="acknowledgments">
+
+                        {% if nextcloud_enabled %}
+                        <div class="row mb-4 mt-2">
+                            <div class="col-12">
+                                <div class="dash-card" id="nextcloudCard">
+                                    <header class="dash-card-header">
+                                        <h2 class="dash-card-title">Nextcloud Sharing</h2>
+                                    </header>
+                                    <div class="dash-card-section">
+                                        <div class="row g-3">
+                                            <div class="col-md-8">
+                                                <label for="nextcloudPath" class="form-label">Server Path</label>
+                                                <input type="text" class="form-control" id="nextcloudPath" placeholder="e.g. /cars4/data/xas_user/2026.3/Eguiguren">
+                                                <div class="form-text">Local filesystem path on the Nextcloud server. The folder will be created as an external storage mount.</div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label for="nextcloudMountName" class="form-label">Mount Name</label>
+                                                <input type="text" class="form-control" id="nextcloudMountName" placeholder="e.g. Eguiguren">
+                                                <div class="form-text">Name shown to users in Nextcloud.</div>
+                                            </div>
+                                        </div>
+                                        <div class="row g-3 mt-1">
+                                            <div class="col-12">
+                                                <label class="form-label">Nextcloud Users</label>
+                                                <div id="nextcloudRecipientsContainer" class="d-flex flex-column gap-2"></div>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="addNextcloudRecipientBtn">
+                                                    <i class="bi bi-plus-circle me-1"></i>Add User
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="row mt-3">
+                                            <div class="col-12 d-flex align-items-center gap-3">
+                                                <button type="button" class="btn btn-outline-primary btn-sm" id="shareNextcloudBtn">
+                                                    <i class="bi bi-cloud-arrow-up me-1"></i>Create Nextcloud Mount
+                                                </button>
+                                                <span id="nextcloudShareStatus" class="small"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
                     </form>
                 </div>
             </div>
