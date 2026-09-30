@@ -14,10 +14,8 @@
 
 import logging
 import re
-from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from pydantic.functional_validators import BeforeValidator
 
 __all__ = ["LoginRequest", "validate_login_input"]
 
@@ -29,47 +27,31 @@ MIN_PASSWORD_LENGTH = 1
 ALLOWED_USERNAME_PATTERN = re.compile(r"^[a-zA-Z0-9._@-]+$")
 
 
-def sanitize_username(value: str) -> str:
-    if not isinstance(value, str):
-        raise ValueError("Username must be a string")
-    sanitized = value.strip().lower()
-    return "".join(char for char in sanitized if ord(char) >= 32)
-
-
-def validate_username_pattern(value: str) -> str:
-    if not ALLOWED_USERNAME_PATTERN.match(value):
-        raise ValueError("Username contains invalid characters.")
-    return value
-
-
-def sanitize_password(value: str) -> str:
-    if not isinstance(value, str):
-        raise ValueError("Password must be a string")
-    return value.replace("\x00", "")
-
-
-SanitizedUsername = Annotated[
-    str, BeforeValidator(sanitize_username), Field(min_length=1, max_length=MAX_USERNAME_LENGTH), BeforeValidator(validate_username_pattern)
-]
-SanitizedPassword = Annotated[str, BeforeValidator(sanitize_password), Field(min_length=MIN_PASSWORD_LENGTH, max_length=MAX_PASSWORD_LENGTH)]
-
-
 class LoginRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, validate_assignment=True, frozen=True)
 
-    username: SanitizedUsername
-    password: SanitizedPassword = Field(repr=False)
+    username: str = Field(min_length=1, max_length=MAX_USERNAME_LENGTH)
+    password: str = Field(min_length=MIN_PASSWORD_LENGTH, max_length=MAX_PASSWORD_LENGTH, repr=False)
 
-    @field_validator("username")
+    @field_validator("username", mode="before")
     @classmethod
-    def validate_username_not_empty(cls, username: str) -> str:
-        if not username or username.isspace():
+    def sanitize_and_validate_username(cls, value: str) -> str:
+        if not isinstance(value, str):
+            raise ValueError("Username must be a string")
+        sanitized = value.strip().lower()
+        sanitized = "".join(char for char in sanitized if ord(char) >= 32)
+        if not sanitized or sanitized.isspace():
             raise ValueError("Username cannot be empty")
-        return username
+        if not ALLOWED_USERNAME_PATTERN.match(sanitized):
+            raise ValueError("Username contains invalid characters.")
+        return sanitized
 
-    @field_validator("password")
+    @field_validator("password", mode="before")
     @classmethod
-    def validate_password_not_empty(cls, password: str) -> str:
+    def sanitize_and_validate_password(cls, value: str) -> str:
+        if not isinstance(value, str):
+            raise ValueError("Password must be a string")
+        password = value.replace("\x00", "")
         if not password:
             raise ValueError("Password cannot be empty")
         return password
