@@ -4,7 +4,7 @@
 # File: beamtime_app/auth_schemas.py
 # ----------------------------------------------------------------------------------
 # Purpose:
-# This file defines Pydantic schemas for secure authentication input validation
+# This file defines schemas for secure authentication input validation
 # ----------------------------------------------------------------------------------
 # Author: Christofanis Skordas
 #
@@ -14,8 +14,7 @@
 
 import logging
 import re
-
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from dataclasses import dataclass
 
 __all__ = ["LoginRequest", "validate_login_input"]
 
@@ -27,39 +26,40 @@ MIN_PASSWORD_LENGTH = 1
 ALLOWED_USERNAME_PATTERN = re.compile(r"^[a-zA-Z0-9._@-]+$")
 
 
-class LoginRequest(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True, validate_assignment=True, frozen=True)
-
-    username: str = Field(min_length=1, max_length=MAX_USERNAME_LENGTH)
-    password: str = Field(min_length=MIN_PASSWORD_LENGTH, max_length=MAX_PASSWORD_LENGTH, repr=False)
-
-    @field_validator("username", mode="before")
-    @classmethod
-    def sanitize_and_validate_username(cls, value: str) -> str:
-        if not isinstance(value, str):
-            raise ValueError("Username must be a string")
-        sanitized = value.strip().lower()
-        sanitized = "".join(char for char in sanitized if ord(char) >= 32)
-        if not sanitized or sanitized.isspace():
-            raise ValueError("Username cannot be empty")
-        if not ALLOWED_USERNAME_PATTERN.match(sanitized):
-            raise ValueError("Username contains invalid characters.")
-        return sanitized
-
-    @field_validator("password", mode="before")
-    @classmethod
-    def sanitize_and_validate_password(cls, value: str) -> str:
-        if not isinstance(value, str):
-            raise ValueError("Password must be a string")
-        password = value.replace("\x00", "")
-        if not password:
-            raise ValueError("Password cannot be empty")
-        return password
+@dataclass(frozen=True)
+class LoginRequest:
+    username: str
+    password: str
 
 
 def validate_login_input(data: dict) -> LoginRequest:
     try:
-        return LoginRequest.model_validate(data)
+        username = data.get("username", "")
+        password = data.get("password", "")
+
+        if not isinstance(username, str):
+            raise ValueError("Username must be a string")
+        username = username.strip().lower()
+        username = "".join(char for char in username if ord(char) >= 32)
+        if not username:
+            raise ValueError("Username cannot be empty")
+        if len(username) > MAX_USERNAME_LENGTH:
+            raise ValueError(f"Username too long (max {MAX_USERNAME_LENGTH} characters)")
+        if not ALLOWED_USERNAME_PATTERN.match(username):
+            raise ValueError("Username contains invalid characters")
+
+        if not isinstance(password, str):
+            raise ValueError("Password must be a string")
+        password = password.replace("\x00", "")
+        if not password:
+            raise ValueError("Password cannot be empty")
+        if len(password) > MAX_PASSWORD_LENGTH:
+            raise ValueError(f"Password too long (max {MAX_PASSWORD_LENGTH} characters)")
+
+        return LoginRequest(username=username, password=password)
+
+    except ValueError:
+        raise
     except Exception as e:
         logger.warning(f"Login input validation failed: {str(e)}")
         raise ValueError("Invalid input data provided") from e

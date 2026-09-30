@@ -17,7 +17,6 @@ from urllib.parse import urljoin, urlparse
 
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required, login_user, logout_user
-from pydantic import ValidationError
 
 from beamtime_app.auth_schemas import validate_login_input
 from beamtime_app.services import AuthService, User
@@ -82,7 +81,7 @@ def login() -> str:
             )
             username = login_data.username
             password = login_data.password
-        except (ValidationError, ValueError) as e:
+        except ValueError as e:
             logger.warning(f"Login input validation failed: {str(e)}")
             flash("Invalid input data provided", "error")
             return render_template("login.html", dev_auth_bypass=dev_auth_bypass)
