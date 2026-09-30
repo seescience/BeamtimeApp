@@ -86,10 +86,15 @@ def create_nextcloud_user(uid: str, display_name: str, email: str) -> None:
 
 
 def search_nextcloud_users(query: str = "") -> list[dict]:
-    """Search Nextcloud users by name/uid. Returns [{id, display_name}] sorted by display name."""
+    """Search Nextcloud users by display name or uid. Returns [{id, display_name}] sorted by display name."""
     with _occ() as occ:
-        raw = occ.list_users(search=query or None)
+        raw = occ.list_users()
+    q = query.lower()
     return sorted(
-        [{"id": uid, "display_name": name} for uid, name in raw.items()],
+        [
+            {"id": uid, "display_name": name}
+            for uid, name in raw.items()
+            if not q or q in name.lower() or q in uid.lower()
+        ],
         key=lambda u: u["display_name"].lower(),
     )
