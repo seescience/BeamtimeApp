@@ -38,7 +38,7 @@ requires-python = "==3.14.*"
 dependencies = [
     "flask>=3.1.1",
     "flask-login>=0.6.3",
-    "gselib[cloud]>=0.1.5",
+    "gselib[cloud]>=0.1.6",
     "gunicorn>=26.2.0",
     "ldap3>=2.9.1",
     "psycopg2-binary>=2.9.13",
