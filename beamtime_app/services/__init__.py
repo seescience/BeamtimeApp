@@ -13,6 +13,6 @@
 # ----------------------------------------------------------------------------------
 
 from beamtime_app.services.auth_service import AuthService, User, clear_user_cache, get_user_by_id
-from beamtime_app.services.nextcloud_service import create_nextcloud_mount, is_nextcloud_configured, list_nextcloud_mounts
+from beamtime_app.services.nextcloud_service import create_nextcloud_mount, create_nextcloud_user, is_nextcloud_configured, list_nextcloud_mounts, search_nextcloud_users
 
-__all__ = ["AuthService", "User", "clear_user_cache", "get_user_by_id", "create_nextcloud_mount", "is_nextcloud_configured", "list_nextcloud_mounts"]
+__all__ = ["AuthService", "User", "clear_user_cache", "get_user_by_id", "create_nextcloud_mount", "create_nextcloud_user", "is_nextcloud_configured", "list_nextcloud_mounts", "search_nextcloud_users"]

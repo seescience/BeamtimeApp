@@ -1428,6 +1428,9 @@ function initializeNextcloudSection() {
     if (addBtn) addBtn.addEventListener('click', addNextcloudRecipient);
     if (shareBtn) shareBtn.addEventListener('click', shareOnNextcloud);
 
+    const createUserBtn = document.getElementById('submitCreateNcUserBtn');
+    if (createUserBtn) createUserBtn.addEventListener('click', createNextcloudUser);
+
     // Keep nextcloudPath and mount name in sync with dataPath unless overridden
     const dataPathEl = document.getElementById('dataPath');
     const nextcloudPathEl = document.getElementById('nextcloudPath');
@@ -1479,14 +1482,132 @@ function addNextcloudRecipient() {
     if (!container) return;
 
     const row = document.createElement('div');
-    row.className = 'd-flex gap-2 align-items-center nextcloud-recipient-row';
+    row.className = 'nextcloud-recipient-row position-relative mb-1';
     row.innerHTML = `
-        <input type="text" class="form-control form-control-sm nextcloud-recipient-email" placeholder="Nextcloud username">
-        <button type="button" class="btn btn-sm btn-outline-danger" title="Remove" onclick="this.closest('.nextcloud-recipient-row').remove()">
-            <i class="bi bi-x-lg"></i>
-        </button>`;
+        <div class="d-flex gap-2 align-items-center">
+            <div class="flex-grow-1 position-relative">
+                <input type="text" class="form-control form-control-sm nextcloud-recipient-search"
+                       placeholder="Search by name..." autocomplete="off">
+                <ul class="list-group position-absolute w-100 nextcloud-user-dropdown shadow-sm"
+                    style="z-index:1050;display:none;max-height:180px;overflow-y:auto;top:100%"></ul>
+            </div>
+            <input type="hidden" class="nextcloud-recipient-email">
+            <span class="nextcloud-recipient-label text-muted small" style="white-space:nowrap"></span>
+            <button type="button" class="btn btn-sm btn-outline-danger flex-shrink-0" title="Remove"
+                    onclick="this.closest('.nextcloud-recipient-row').remove()">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>`;
     container.appendChild(row);
-    row.querySelector('input').focus();
+
+    const searchInput = row.querySelector('.nextcloud-recipient-search');
+    const dropdown = row.querySelector('.nextcloud-user-dropdown');
+    const hiddenInput = row.querySelector('.nextcloud-recipient-email');
+    const label = row.querySelector('.nextcloud-recipient-label');
+    let debounceTimer = null;
+
+    searchInput.addEventListener('input', () => {
+        const q = searchInput.value.trim();
+        hiddenInput.value = '';
+        label.textContent = '';
+        clearTimeout(debounceTimer);
+        if (q.length < 2) { dropdown.style.display = 'none'; return; }
+        debounceTimer = setTimeout(() => {
+            fetch(`/api/v1/nextcloud_users?q=${encodeURIComponent(q)}`)
+                .then(r => r.json())
+                .then(data => {
+                    dropdown.innerHTML = '';
+                    const users = data.users || [];
+                    if (!users.length) {
+                        dropdown.innerHTML = '<li class="list-group-item list-group-item-action text-muted small py-1">No users found</li>';
+                    } else {
+                        users.forEach(u => {
+                            const li = document.createElement('li');
+                            li.className = 'list-group-item list-group-item-action py-1 small';
+                            li.textContent = u.display_name;
+                            li.addEventListener('mousedown', e => {
+                                e.preventDefault();
+                                hiddenInput.value = u.id;
+                                searchInput.value = u.display_name;
+                                label.textContent = '';
+                                dropdown.style.display = 'none';
+                            });
+                            dropdown.appendChild(li);
+                        });
+                    }
+                    dropdown.style.display = 'block';
+                })
+                .catch(() => { dropdown.style.display = 'none'; });
+        }, 300);
+    });
+
+    searchInput.addEventListener('blur', () => {
+        setTimeout(() => { dropdown.style.display = 'none'; }, 150);
+    });
+
+    searchInput.focus();
+}
+
+function createNextcloudUser() {
+    const uid = document.getElementById('newNcUsername')?.value.trim();
+    const displayName = document.getElementById('newNcDisplayName')?.value.trim();
+    const email = document.getElementById('newNcEmail')?.value.trim();
+    const statusEl = document.getElementById('createNcUserStatus');
+    const btn = document.getElementById('submitCreateNcUserBtn');
+
+    if (!uid) { statusEl.textContent = 'Username is required.'; statusEl.className = 'small text-danger'; return; }
+    if (!displayName) { statusEl.textContent = 'Display name is required.'; statusEl.className = 'small text-danger'; return; }
+    if (!email) { statusEl.textContent = 'Email is required.'; statusEl.className = 'small text-danger'; return; }
+
+    btn.disabled = true;
+    statusEl.textContent = 'Creating user…';
+    statusEl.className = 'small text-muted';
+
+    fetch('/api/v1/nextcloud_user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid, display_name: displayName, email }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        if (data.success) {
+            statusEl.textContent = `User '${displayName}' created. Activation email sent.`;
+            statusEl.className = 'small text-success';
+            document.getElementById('newNcUsername').value = '';
+            document.getElementById('newNcDisplayName').value = '';
+            document.getElementById('newNcEmail').value = '';
+            // Auto-add the new user to the recipients list
+            const container = document.getElementById('nextcloudRecipientsContainer');
+            if (container) {
+                const row = document.createElement('div');
+                row.className = 'nextcloud-recipient-row position-relative mb-1';
+                row.innerHTML = `
+                    <div class="d-flex gap-2 align-items-center">
+                        <div class="flex-grow-1">
+                            <input type="text" class="form-control form-control-sm" value="${displayName}" readonly>
+                        </div>
+                        <input type="hidden" class="nextcloud-recipient-email" value="${uid}">
+                        <button type="button" class="btn btn-sm btn-outline-danger flex-shrink-0" title="Remove"
+                                onclick="this.closest('.nextcloud-recipient-row').remove()">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>`;
+                container.appendChild(row);
+            }
+            // Collapse the form
+            const collapseEl = document.getElementById('createNextcloudUserForm');
+            if (collapseEl && window.bootstrap) bootstrap.Collapse.getInstance(collapseEl)?.hide();
+        } else {
+            statusEl.textContent = data.error || 'Failed to create user.';
+            statusEl.className = 'small text-danger';
+        }
+    })
+    .catch(() => {
+        btn.disabled = false;
+        statusEl.textContent = 'Request failed.';
+        statusEl.className = 'small text-danger';
+    });
 }
 
 function shareOnNextcloud() {
@@ -1498,6 +1619,12 @@ function shareOnNextcloud() {
     const users = Array.from(document.querySelectorAll('.nextcloud-recipient-email'))
         .map(el => el.value.trim())
         .filter(Boolean);
+    const unselected = Array.from(document.querySelectorAll('.nextcloud-recipient-search'))
+        .some(el => el.value.trim() && !el.closest('.nextcloud-recipient-row').querySelector('.nextcloud-recipient-email').value);
+    if (unselected) {
+        if (statusEl) { statusEl.textContent = 'Select a user from the dropdown for each entry.'; statusEl.className = 'small text-danger'; }
+        return;
+    }
 
     if (!serverPath) {
         if (statusEl) { statusEl.textContent = 'Server path is required.'; statusEl.className = 'small text-danger'; }

@@ -13,6 +13,8 @@
 # ----------------------------------------------------------------------------------
 
 import logging
+import secrets
+import string
 from contextlib import contextmanager
 
 from flask import current_app
@@ -20,7 +22,7 @@ from gselib.cloud import NextcloudOCC
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["is_nextcloud_configured", "create_nextcloud_mount", "list_nextcloud_mounts"]
+__all__ = ["is_nextcloud_configured", "create_nextcloud_mount", "list_nextcloud_mounts", "search_nextcloud_users", "create_nextcloud_user"]
 
 
 def is_nextcloud_configured() -> bool:
@@ -69,3 +71,25 @@ def list_nextcloud_mounts() -> list:
     """List all Nextcloud external storage mounts."""
     with _occ() as occ:
         return occ.list_storages()
+
+
+def _generate_password(length: int = 16) -> str:
+    alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+    return "".join(secrets.choice(alphabet) for _ in range(length))
+
+
+def create_nextcloud_user(uid: str, display_name: str, email: str) -> None:
+    """Create a new local Nextcloud user. OCC sends an activation email so the user sets their own password."""
+    with _occ() as occ:
+        occ.create_user(uid, display_name, email, _generate_password())
+    logger.info(f"Nextcloud: created user '{uid}' ({display_name}), activation email sent to {email}")
+
+
+def search_nextcloud_users(query: str = "") -> list[dict]:
+    """Search Nextcloud users by name/uid. Returns [{id, display_name}] sorted by display name."""
+    with _occ() as occ:
+        raw = occ.list_users(search=query or None)
+    return sorted(
+        [{"id": uid, "display_name": name} for uid, name in raw.items()],
+        key=lambda u: u["display_name"].lower(),
+    )

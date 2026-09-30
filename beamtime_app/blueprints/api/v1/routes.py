@@ -19,7 +19,7 @@ from flask_login import login_required
 
 from beamtime_app.crud import add_to_queue, get_all_entries, get_experiments, get_info_value
 from beamtime_app.models import Acknowledgment, APSBeamline, Info, ProcessStatus, Run, Technique
-from beamtime_app.services import create_nextcloud_mount, is_nextcloud_configured
+from beamtime_app.services import create_nextcloud_mount, create_nextcloud_user, is_nextcloud_configured, search_nextcloud_users
 from beamtime_app.pvlog_yaml import empty_pvlog_config, parse_pvlog_yaml, serialize_pvlog_yaml
 from beamtime_app.utils import (
     format_info_modification_time,
@@ -359,6 +359,43 @@ def save_pvlog_file() -> str:
         )
     except OSError as exc:
         return jsonify({"error": f"Unable to save file: {exc}"}), 500
+
+
+@api_v1.route("/nextcloud_users", methods=["GET"])
+@login_required
+def nextcloud_users():
+    """Search Nextcloud users by display name or uid."""
+    if not is_nextcloud_configured():
+        return jsonify({"error": "Nextcloud is not configured on this server"}), 503
+    query = request.args.get("q", "").strip()
+    try:
+        users = search_nextcloud_users(query)
+        return jsonify({"users": users})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@api_v1.route("/nextcloud_user", methods=["POST"])
+@login_required
+def nextcloud_user_create():
+    """Create a new local Nextcloud user."""
+    if not is_nextcloud_configured():
+        return jsonify({"error": "Nextcloud is not configured on this server"}), 503
+    data = request.get_json() or {}
+    uid = data.get("uid", "").strip()
+    display_name = data.get("display_name", "").strip()
+    email = data.get("email", "").strip()
+    if not uid:
+        return jsonify({"error": "Username is required"}), 400
+    if not display_name:
+        return jsonify({"error": "Display name is required"}), 400
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+    try:
+        create_nextcloud_user(uid, display_name, email)
+        return jsonify({"success": True, "uid": uid, "display_name": display_name})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @api_v1.route("/nextcloud_mount", methods=["POST"])
