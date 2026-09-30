@@ -72,9 +72,9 @@ def list_nextcloud_mounts() -> list:
 
 
 def create_nextcloud_user(uid: str, display_name: str, email: str) -> None:
-    """Create a new local Nextcloud user. Nextcloud generates a password and emails it to the user."""
+    """Create a new local Nextcloud user, added to the Users group. Nextcloud generates a password and emails it."""
     with _occ() as occ:
-        occ.create_user(uid, display_name, email)
+        occ.create_user(uid, display_name, email, groups=["Users"])
     logger.info(f"Nextcloud: created user '{uid}' ({display_name}), credentials emailed to {email}")
 
 
