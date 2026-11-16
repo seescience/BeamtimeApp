@@ -24,11 +24,13 @@ from beamtime_app.models import (
     Experiment,
     ExperimentPerson,
     Info,
+    Institution,
     Person,
     ProcessStatus,
     ProcessStatusEnum,
     Queue,
     Technique,
+    UserType,
 )
 from beamtime_app.utils import format_experiment_data, to_dictionary
 
@@ -125,22 +127,35 @@ def get_experiments(
 
             # Fetch all experiment users via the junction table
             ExperimentUser = aliased(Person)
+            UserInstitution = aliased(Institution)
             user_results = (
                 session.query(
                     ExperimentPerson.experiment_id,
+                    ExperimentUser.badge,
                     ExperimentUser.first_name,
                     ExperimentUser.last_name,
                     ExperimentUser.email,
+                    ExperimentUser.orcid,
+                    UserInstitution.name.label("institution_name"),
+                    UserInstitution.country.label("institution_country"),
+                    UserType.name.label("user_type_name"),
                 )
                 .join(ExperimentUser, ExperimentPerson.person_id == ExperimentUser.id)
+                .outerjoin(UserInstitution, ExperimentUser.affiliation_id == UserInstitution.id)
+                .outerjoin(UserType, ExperimentPerson.user_type_id == UserType.id)
                 .all()
             )
             users_by_experiment: dict[int, list[dict]] = {}
             for row in user_results:
                 users_by_experiment.setdefault(row.experiment_id, []).append(
                     {
+                        "badge": row.badge,
                         "name": f"{row.first_name or ''} {row.last_name or ''}".strip() or None,
                         "email": row.email,
+                        "orcid": row.orcid,
+                        "institution": row.institution_name,
+                        "country": row.institution_country,
+                        "role": row.user_type_name,
                     }
                 )
 

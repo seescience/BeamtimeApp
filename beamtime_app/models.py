@@ -22,7 +22,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from beamtime_app.database import BASE
 
-__all__ = ["Info", "Acknowledgment", "Technique", "Run", "APSBeamline", "Experiment", "ExperimentPerson", "Person", "ProcessStatus", "ProcessStatusEnum", "Queue"]
+__all__ = ["Info", "Acknowledgment", "Technique", "Run", "APSBeamline", "Experiment", "ExperimentPerson", "Institution", "Person", "ProcessStatus", "ProcessStatusEnum", "Queue", "UserType"]
 
 
 class ProcessStatusEnum(IntEnum):
@@ -222,6 +222,34 @@ class ProcessStatus(BASE, BaseModel):
     """Model for the process status."""
 
     __tablename__ = "process_status"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(64))
+
+    def __post_init__(self) -> None:
+        self._columns = {"id": self.id, "name": self.name}
+
+
+@dataclass
+class Institution(BASE, BaseModel):
+    """Model for institutions."""
+
+    __tablename__ = "institution"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(2048))
+    city: Mapped[str] = mapped_column(String(512))
+    country: Mapped[str] = mapped_column(String(512))
+
+    def __post_init__(self) -> None:
+        self._columns = {"id": self.id, "name": self.name, "city": self.city, "country": self.country}
+
+
+@dataclass
+class UserType(BASE, BaseModel):
+    """Model for user types."""
+
+    __tablename__ = "user_type"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(64))

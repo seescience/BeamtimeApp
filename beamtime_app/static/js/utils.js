@@ -905,18 +905,49 @@ function populateViewDetails(experiment) {
         }
     }
     
-    // Users list from experiment_person
+    // Users table from experiment_person
+    const usersTitleEl = document.getElementById('detailViewUsersTitle');
+    if (usersTitleEl) {
+        const count = (experiment.users && experiment.users.length) || 0;
+        usersTitleEl.textContent = `Users (${count})`;
+    }
     if (usersEl) {
         if (experiment.users && experiment.users.length > 0) {
-            usersEl.innerHTML = experiment.users.map(u => {
-                const name = u.name || 'N/A';
-                if (u.email) {
-                    return `${name} <br><small><a href="mailto:${u.email}">${u.email}</a></small>`;
-                }
-                return name;
-            }).join('<hr class="my-1">');
+            const rows = experiment.users.map(u => {
+                const name = u.name || '';
+                const badge = u.badge ? `<span class="badge-pill">${u.badge}</span>` : '';
+                const institution = u.institution || '';
+                const country = u.country || '';
+                const email = u.email ? `<a href="mailto:${u.email}">${u.email}</a>` : '';
+                const role = u.role || '';
+                const orcid = u.orcid
+                    ? `<a class="orcid-link" href="https://orcid.org/${u.orcid}" target="_blank">${u.orcid}</a>`
+                    : '';
+                return `<tr>
+                    <td>${name}</td>
+                    <td>${institution}</td>
+                    <td>${email}</td>
+                    <td>${badge}</td>
+                    <td>${orcid}</td>
+                    <td>${role}</td>
+                </tr>`;
+            }).join('');
+            usersEl.innerHTML = `
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Institution</th>
+                            <th>Email</th>
+                            <th>Badge Number</th>
+                            <th>ORCID</th>
+                            <th>Role</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>`;
         } else {
-            usersEl.textContent = 'N/A';
+            usersEl.innerHTML = '<p class="users-empty">No users recorded.</p>';
         }
     }
 
