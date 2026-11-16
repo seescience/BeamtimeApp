@@ -47,6 +47,7 @@ def format_experiment_data(experiments: list[dict[str, any]]) -> list[dict[str, 
             "spokesperson_email": exp.get("spokesperson_email", "N/A"),
             "beamline_contact_name": exp.get("beamline_contact_name", "N/A"),
             "beamline_contact_email": exp.get("beamline_contact_email", "N/A"),
+            "users": exp.get("users", []),
         }
         for exp in experiments
     ]

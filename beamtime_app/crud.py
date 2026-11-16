@@ -22,6 +22,7 @@ from beamtime_app.models import (
     APSBeamline,
     BaseModel,
     Experiment,
+    ExperimentPerson,
     Info,
     Person,
     ProcessStatus,
@@ -122,6 +123,27 @@ def get_experiments(
 
             results = query.all()
 
+            # Fetch all experiment users via the junction table
+            ExperimentUser = aliased(Person)
+            user_results = (
+                session.query(
+                    ExperimentPerson.experiment_id,
+                    ExperimentUser.first_name,
+                    ExperimentUser.last_name,
+                    ExperimentUser.email,
+                )
+                .join(ExperimentUser, ExperimentPerson.person_id == ExperimentUser.id)
+                .all()
+            )
+            users_by_experiment: dict[int, list[dict]] = {}
+            for row in user_results:
+                users_by_experiment.setdefault(row.experiment_id, []).append(
+                    {
+                        "name": f"{row.first_name or ''} {row.last_name or ''}".strip() or None,
+                        "email": row.email,
+                    }
+                )
+
             # Convert results to dictionaries
             experiments = [
                 {
@@ -148,6 +170,7 @@ def get_experiments(
                     "process_status": result.exp_status_name,
                     "process_status_id": result.exp_status_id,
                     "is_queued": bool(result.queue_id),
+                    "users": users_by_experiment.get(result.id, []),
                 }
                 for result in results
             ]

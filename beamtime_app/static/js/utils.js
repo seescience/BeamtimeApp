@@ -842,6 +842,7 @@ function populateViewDetails(experiment) {
     const endDateEl = document.getElementById('detailViewEndDate');
     const spokespersonEl = document.getElementById('detailViewSpokesperson');
     const beamlineContactEl = document.getElementById('detailViewBeamlineContact');
+    const usersEl = document.getElementById('detailViewUsers');
     const seesDoiEl = document.getElementById('detailViewSeesDoi');
     const apsDoiEl = document.getElementById('detailViewApsDoi');
     const esafPdfEl = document.getElementById('detailViewEsafPdf');
@@ -904,6 +905,21 @@ function populateViewDetails(experiment) {
         }
     }
     
+    // Users list from experiment_person
+    if (usersEl) {
+        if (experiment.users && experiment.users.length > 0) {
+            usersEl.innerHTML = experiment.users.map(u => {
+                const name = u.name || 'N/A';
+                if (u.email) {
+                    return `${name} <br><small><a href="mailto:${u.email}">${u.email}</a></small>`;
+                }
+                return name;
+            }).join('<hr class="my-1">');
+        } else {
+            usersEl.textContent = 'N/A';
+        }
+    }
+
     // SEES DOI with link
     if (seesDoiEl) {
         if (experiment.sees_doi && experiment.sees_doi !== 'N/A') {
