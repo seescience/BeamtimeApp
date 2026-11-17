@@ -837,98 +837,117 @@ function updateSelectedAcknowledgments() {
     }
 }
 
+// Set a detail property value and hide the row if the value is empty
+function setDetailProp(elementId, value, isHtml = false) {
+    const el = document.getElementById(elementId);
+    if (!el) return false;
+    const row = el.closest('.detail-prop');
+    if (!value && value !== 0) {
+        if (row) row.hidden = true;
+        return false;
+    }
+    if (row) row.hidden = false;
+    if (isHtml) {
+        el.innerHTML = value;
+    } else {
+        el.textContent = value;
+    }
+    return true;
+}
+
+function isBlank(v) {
+    return !v || v === 'N/A' || v === 'unknown' || String(v).trim() === '';
+}
+
 // Populate read-only experiment details with full data
 function populateViewDetails(experiment) {
     const titleEl = document.getElementById('detailViewTitle');
-    const esafEl = document.getElementById('detailViewExperimentNumber');
-    const proposalEl = document.getElementById('detailViewProposal');
     const statusEl = document.getElementById('detailViewStatus');
-    const beamlineEl = document.getElementById('detailViewBeamline');
-    const descriptionEl = document.getElementById('detailViewDescription');
-    const dataPathEl = document.getElementById('detailViewDataPath');
-    const startDateEl = document.getElementById('detailViewStartDate');
-    const endDateEl = document.getElementById('detailViewEndDate');
-    const spokespersonEl = document.getElementById('detailViewSpokesperson');
-    const beamlineContactEl = document.getElementById('detailViewBeamlineContact');
-    const usersEl = document.getElementById('detailViewUsers');
-    const seesDoiEl = document.getElementById('detailViewSeesDoi');
-    const apsDoiEl = document.getElementById('detailViewApsDoi');
-    const esafPdfEl = document.getElementById('detailViewEsafPdf');
-    const pvlogFileEl = document.getElementById('detailViewPvlogFile');
 
-    if (titleEl) titleEl.textContent = experiment.title || 'N/A';
-    if (esafEl) esafEl.textContent = experiment.id || 'N/A';
-    if (proposalEl) proposalEl.textContent = experiment.proposal || 'N/A';
-    
-    // Status badge
+    if (titleEl) titleEl.textContent = experiment.title || '';
+
     if (statusEl) {
         statusEl.innerHTML = '';
         if (experiment.process_status) {
             statusEl.appendChild(createStatusBadge(experiment.process_status));
-        } else {
-            statusEl.textContent = 'N/A';
         }
     }
-    
-    if (beamlineEl) beamlineEl.textContent = experiment.beamline_name || 'N/A';
-    if (descriptionEl) descriptionEl.textContent = experiment.description || 'N/A';
-    if (dataPathEl) {
-        dataPathEl.textContent = (experiment.folder && experiment.folder.trim() !== '') ? experiment.folder : 'N/A';
+
+    setDetailProp('detailViewBeamline', experiment.beamline_name);
+    setDetailProp('detailViewStartDate',
+        experiment.start_date ? new Date(experiment.start_date).toLocaleDateString() : null);
+    setDetailProp('detailViewEndDate',
+        experiment.end_date ? new Date(experiment.end_date).toLocaleDateString() : null);
+    setDetailProp('detailViewProposal', experiment.proposal);
+    setDetailProp('detailViewExperimentNumber', experiment.id);
+
+    // ESAF PDF
+    if (experiment.esaf_pdf_file && !isBlank(experiment.esaf_pdf_file)) {
+        const pdfUrl = `/api/v1/serve_pdf?path=${encodeURIComponent(experiment.esaf_pdf_file)}`;
+        setDetailProp('detailViewEsafPdf', `<a href="${pdfUrl}" target="_blank">View PDF</a>`, true);
+    } else {
+        setDetailProp('detailViewEsafPdf', null);
     }
-    
-    // Format dates
-    if (startDateEl) {
-        startDateEl.textContent = experiment.start_date ? 
-            new Date(experiment.start_date).toLocaleDateString() : 'N/A';
-    }
-    if (endDateEl) {
-        endDateEl.textContent = experiment.end_date ? 
-            new Date(experiment.end_date).toLocaleDateString() : 'N/A';
-    }
-    
-    // Personnel with email links
-    if (spokespersonEl) {
-        if (experiment.spokesperson_name && experiment.spokesperson_name !== 'N/A') {
-            let spokespersonText = experiment.spokesperson_name;
-            if (experiment.spokesperson_email && experiment.spokesperson_email !== 'N/A') {
-                spokespersonEl.innerHTML = `${spokespersonText} <br><small><a href="mailto:${experiment.spokesperson_email}">${experiment.spokesperson_email}</a></small>`;
-            } else {
-                spokespersonEl.textContent = spokespersonText;
-            }
-        } else {
-            spokespersonEl.textContent = 'N/A';
+
+    // Beamline contact with email link
+    function buildPersonValue(name, email) {
+        if (isBlank(name)) return null;
+        if (!isBlank(email)) {
+            return `${name} <br><small><a href="mailto:${email}">${email}</a></small>`;
         }
+        return name;
     }
-    
-    if (beamlineContactEl) {
-        if (experiment.beamline_contact_name && experiment.beamline_contact_name !== 'N/A') {
-            let contactText = experiment.beamline_contact_name;
-            if (experiment.beamline_contact_email && experiment.beamline_contact_email !== 'N/A') {
-                beamlineContactEl.innerHTML = `${contactText} <br><small><a href="mailto:${experiment.beamline_contact_email}">${experiment.beamline_contact_email}</a></small>`;
-            } else {
-                beamlineContactEl.textContent = contactText;
-            }
-        } else {
-            beamlineContactEl.textContent = 'N/A';
-        }
+    const contactHtml = buildPersonValue(experiment.beamline_contact_name, experiment.beamline_contact_email);
+    setDetailProp('detailViewBeamlineContact', contactHtml, !!contactHtml);
+
+    // Description (right column, always set, no row hiding)
+    const descriptionEl = document.getElementById('detailViewDescription');
+    if (descriptionEl) descriptionEl.textContent = experiment.description || '';
+
+    // Links & Files: set rows, hide section if none have values
+    const hasDataPath = setDetailProp('detailViewDataPath',
+        (experiment.folder && !isBlank(experiment.folder)) ? experiment.folder : null);
+    const hasPvlog = setDetailProp('detailViewPvlogFile',
+        (experiment.pvlog_file && !isBlank(experiment.pvlog_file)) ? experiment.pvlog_file : null);
+
+    let hasSesDoi = false;
+    if (experiment.sees_doi && !isBlank(experiment.sees_doi)) {
+        hasSesDoi = setDetailProp('detailViewSeesDoi',
+            `<a href="https://doi.org/${experiment.sees_doi}" target="_blank">${experiment.sees_doi}</a>`, true);
+    } else {
+        setDetailProp('detailViewSeesDoi', null);
     }
-    
-    // Users table from experiment_person
+
+    let hasApsDoi = false;
+    if (experiment.aps_doi && !isBlank(experiment.aps_doi)) {
+        hasApsDoi = setDetailProp('detailViewApsDoi',
+            `<a href="https://doi.org/${experiment.aps_doi}" target="_blank">${experiment.aps_doi}</a>`, true);
+    } else {
+        setDetailProp('detailViewApsDoi', null);
+    }
+
+    const linksSection = document.getElementById('detailLinksSection');
+    if (linksSection) linksSection.hidden = !(hasDataPath || hasPvlog || hasSesDoi || hasApsDoi);
+
+    // Users table
     const usersTitleEl = document.getElementById('detailViewUsersTitle');
+    const usersEl = document.getElementById('detailViewUsers');
     if (usersTitleEl) {
         const count = (experiment.users && experiment.users.length) || 0;
         usersTitleEl.textContent = `Users (${count})`;
     }
     if (usersEl) {
         if (experiment.users && experiment.users.length > 0) {
+            const spokespersonName = (experiment.spokesperson_name && !isBlank(experiment.spokesperson_name))
+                ? experiment.spokesperson_name.trim() : '';
             const rows = experiment.users.map(u => {
                 const name = u.name || '';
                 const badge = u.badge ? `<span class="badge-pill">${u.badge}</span>` : '';
                 const institution = u.institution || '';
-                const country = u.country || '';
-                const email = u.email ? `<a href="mailto:${u.email}">${u.email}</a>` : '';
-                const role = u.role || '';
-                const orcid = u.orcid
+                const email = u.email && !isBlank(u.email)
+                    ? `<a href="mailto:${u.email}">${u.email}</a>` : '';
+                const role = (spokespersonName && name.trim() === spokespersonName) ? 'PI' : 'User';
+                const orcid = u.orcid && !isBlank(u.orcid)
                     ? `<a class="orcid-link" href="https://orcid.org/${u.orcid}" target="_blank">${u.orcid}</a>`
                     : '';
                 return `<tr>
@@ -947,7 +966,7 @@ function populateViewDetails(experiment) {
                             <th>Name</th>
                             <th>Institution</th>
                             <th>Email</th>
-                            <th>Badge Number</th>
+                            <th>Badge</th>
                             <th>ORCID</th>
                             <th>Role</th>
                         </tr>
@@ -957,39 +976,6 @@ function populateViewDetails(experiment) {
         } else {
             usersEl.innerHTML = '<p class="users-empty">No users recorded.</p>';
         }
-    }
-
-    // SEES DOI with link
-    if (seesDoiEl) {
-        if (experiment.sees_doi && experiment.sees_doi !== 'N/A') {
-            seesDoiEl.innerHTML = `<a href="https://doi.org/${experiment.sees_doi}" target="_blank">${experiment.sees_doi}</a>`;
-        } else {
-            seesDoiEl.textContent = 'N/A';
-        }
-    }
-
-    // APS DOI with link
-    if (apsDoiEl) {
-        if (experiment.aps_doi && experiment.aps_doi !== 'N/A') {
-            apsDoiEl.innerHTML = `<a href="https://doi.org/${experiment.aps_doi}" target="_blank">${experiment.aps_doi}</a>`;
-        } else {
-            apsDoiEl.textContent = 'N/A';
-        }
-    }
-    
-    // ESAF PDF with link
-    if (esafPdfEl) {
-        if (experiment.esaf_pdf_file && experiment.esaf_pdf_file !== 'N/A') {
-            const pdfUrl = `/api/v1/serve_pdf?path=${encodeURIComponent(experiment.esaf_pdf_file)}`;
-            esafPdfEl.innerHTML = `<a href="${pdfUrl}" target="_blank">View PDF</a>`;
-        } else {
-            esafPdfEl.textContent = 'N/A';
-        }
-    }
-
-    // PVLog file
-    if (pvlogFileEl) {
-        pvlogFileEl.textContent = (experiment.pvlog_file && experiment.pvlog_file !== 'N/A') ? experiment.pvlog_file : 'N/A';
     }
 }
 

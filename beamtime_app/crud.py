@@ -125,12 +125,15 @@ def get_experiments(
 
             results = query.all()
 
-            # Fetch all experiment users via the junction table
+            # Fetch all experiment users, joining experiment to get spokesperson_id
             ExperimentUser = aliased(Person)
             UserInstitution = aliased(Institution)
+            ExperimentRef = aliased(Experiment)
             user_results = (
                 session.query(
                     ExperimentPerson.experiment_id,
+                    ExperimentPerson.person_id,
+                    ExperimentRef.spokesperson_id.label("exp_spokesperson_id"),
                     ExperimentUser.badge,
                     ExperimentUser.first_name,
                     ExperimentUser.last_name,
@@ -138,15 +141,15 @@ def get_experiments(
                     ExperimentUser.orcid,
                     UserInstitution.name.label("institution_name"),
                     UserInstitution.country.label("institution_country"),
-                    UserType.name.label("user_type_name"),
                 )
                 .join(ExperimentUser, ExperimentPerson.person_id == ExperimentUser.id)
+                .join(ExperimentRef, ExperimentPerson.experiment_id == ExperimentRef.id)
                 .outerjoin(UserInstitution, ExperimentUser.affiliation_id == UserInstitution.id)
-                .outerjoin(UserType, ExperimentPerson.user_type_id == UserType.id)
                 .all()
             )
             users_by_experiment: dict[int, list[dict]] = {}
             for row in user_results:
+                is_pi = row.person_id == row.exp_spokesperson_id
                 users_by_experiment.setdefault(row.experiment_id, []).append(
                     {
                         "badge": row.badge,
@@ -155,7 +158,7 @@ def get_experiments(
                         "orcid": row.orcid,
                         "institution": row.institution_name,
                         "country": row.institution_country,
-                        "role": row.user_type_name,
+                        "role": "PI" if is_pi else "User",
                     }
                 )
 

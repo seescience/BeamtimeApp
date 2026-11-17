@@ -110,7 +110,7 @@
                             </td>
                             <td class="exp-col-main">
                                 <span class="experiment-title-text">{{ experiment.title }}</span>
-                                <span class="exp-row-meta">{{ experiment.beamline_name or '—' }} &middot; ESAF {{ experiment.id }} &middot; Proposal {{ experiment.proposal or 'N/A' }}</span>
+                                <span class="exp-row-meta">{{ experiment.beamline_name or '' }} &middot; ESAF {{ experiment.id }} &middot; Proposal {{ experiment.proposal or 'N/A' }}</span>
                             </td>
                             <td class="exp-col-person">
                                 <span class="exp-avatar">{{ av1 }}{{ av2 }}</span>
@@ -136,7 +136,7 @@
             <div id="experimentDetailView" class="dash-detail-view" hidden>
                 <div class="dash-detail-toolbar">
                     <button type="button" id="backToExperimentsBtn" aria-label="Back">
-                        <i class="bi bi-arrow-left"></i>
+                        <i class="bi bi-arrow-left"></i> Back
                     </button>
                     <div class="dash-detail-actions">
                         <button type="button" class="btn btn-sm btn-outline-secondary" id="detailEditBtn">
@@ -149,67 +149,70 @@
                 </div>
 
                 <div id="experimentViewPanel" class="dash-detail-scroll">
+                    <div class="detail-content">
                     <div class="detail-title-section">
                         <div class="detail-title-status" id="detailViewStatus"></div>
                         <h2 class="detail-title" id="detailViewTitle"></h2>
                     </div>
-                    <div class="detail-props">
-                        <div class="detail-prop">
-                            <span class="detail-prop-label">Beamline</span>
-                            <div class="detail-prop-value" id="detailViewBeamline"></div>
+                    <div class="detail-body">
+                        <div class="detail-col-main">
+                            <div class="detail-panel-header">Details</div>
+                            <div class="detail-props">
+                                <div class="detail-prop">
+                                    <span class="detail-prop-label">Beamline</span>
+                                    <div class="detail-prop-value" id="detailViewBeamline"></div>
+                                </div>
+                                <div class="detail-prop">
+                                    <span class="detail-prop-label">Start date</span>
+                                    <div class="detail-prop-value" id="detailViewStartDate"></div>
+                                </div>
+                                <div class="detail-prop">
+                                    <span class="detail-prop-label">End date</span>
+                                    <div class="detail-prop-value" id="detailViewEndDate"></div>
+                                </div>
+                                <div class="detail-prop">
+                                    <span class="detail-prop-label">Proposal</span>
+                                    <div class="detail-prop-value" id="detailViewProposal"></div>
+                                </div>
+                                <div class="detail-prop">
+                                    <span class="detail-prop-label">ESAF</span>
+                                    <div class="detail-prop-value" id="detailViewExperimentNumber"></div>
+                                </div>
+                                <div class="detail-prop">
+                                    <span class="detail-prop-label">ESAF PDF</span>
+                                    <div class="detail-prop-value" id="detailViewEsafPdf"></div>
+                                </div>
+                                <div class="detail-prop">
+                                    <span class="detail-prop-label">Beamline contact</span>
+                                    <div class="detail-prop-value" id="detailViewBeamlineContact"></div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="detail-prop">
-                            <span class="detail-prop-label">Start date</span>
-                            <div class="detail-prop-value" id="detailViewStartDate"></div>
+                        <div class="detail-col-side">
+                            <div class="detail-panel-header">Description</div>
+                            <div class="detail-description-body text-break" id="detailViewDescription"></div>
                         </div>
-                        <div class="detail-prop">
-                            <span class="detail-prop-label">End date</span>
-                            <div class="detail-prop-value" id="detailViewEndDate"></div>
-                        </div>
-                        <div class="detail-prop-sep"></div>
-                        <div class="detail-prop">
-                            <span class="detail-prop-label">Proposal</span>
-                            <div class="detail-prop-value" id="detailViewProposal"></div>
-                        </div>
-                        <div class="detail-prop">
-                            <span class="detail-prop-label">ESAF</span>
-                            <div class="detail-prop-value" id="detailViewExperimentNumber"></div>
-                        </div>
-                        <div class="detail-prop">
-                            <span class="detail-prop-label">ESAF PDF</span>
-                            <div class="detail-prop-value" id="detailViewEsafPdf"></div>
-                        </div>
-                        <div class="detail-prop-sep"></div>
-                        <div class="detail-prop">
-                            <span class="detail-prop-label">Spokesperson</span>
-                            <div class="detail-prop-value" id="detailViewSpokesperson"></div>
-                        </div>
-                        <div class="detail-prop">
-                            <span class="detail-prop-label">Beamline contact</span>
-                            <div class="detail-prop-value" id="detailViewBeamlineContact"></div>
-                        </div>
-                        <div class="detail-prop-sep"></div>
-                        <div class="detail-prop detail-prop--full">
-                            <span class="detail-prop-label">Description</span>
-                            <div class="detail-prop-value text-break" id="detailViewDescription"></div>
-                        </div>
-                        <div class="detail-prop-sep"></div>
-                        <div class="detail-prop">
-                            <span class="detail-prop-label">Data path</span>
-                            <div class="detail-prop-value font-monospace text-break" id="detailViewDataPath"></div>
-                        </div>
-                        <div class="detail-prop">
-                            <span class="detail-prop-label">PVLog file</span>
-                            <div class="detail-prop-value font-monospace text-break" id="detailViewPvlogFile"></div>
-                        </div>
-                        <div class="detail-prop-sep"></div>
-                        <div class="detail-prop">
-                            <span class="detail-prop-label">SEES DOI</span>
-                            <div class="detail-prop-value" id="detailViewSeesDoi"></div>
-                        </div>
-                        <div class="detail-prop">
-                            <span class="detail-prop-label">APS DOI</span>
-                            <div class="detail-prop-value" id="detailViewApsDoi"></div>
+                    </div>
+
+                    <div class="detail-links-section" id="detailLinksSection">
+                        <div class="detail-panel-header">Links &amp; Files</div>
+                        <div class="detail-props">
+                            <div class="detail-prop">
+                                <span class="detail-prop-label">Data path</span>
+                                <div class="detail-prop-value font-monospace text-break" id="detailViewDataPath"></div>
+                            </div>
+                            <div class="detail-prop">
+                                <span class="detail-prop-label">PVLog file</span>
+                                <div class="detail-prop-value font-monospace text-break" id="detailViewPvlogFile"></div>
+                            </div>
+                            <div class="detail-prop">
+                                <span class="detail-prop-label">SEES DOI</span>
+                                <div class="detail-prop-value" id="detailViewSeesDoi"></div>
+                            </div>
+                            <div class="detail-prop">
+                                <span class="detail-prop-label">APS DOI</span>
+                                <div class="detail-prop-value" id="detailViewApsDoi"></div>
+                            </div>
                         </div>
                     </div>
 
@@ -218,6 +221,7 @@
                             <span id="detailViewUsersTitle">Experiment Users</span>
                         </div>
                         <div id="detailViewUsers"></div>
+                    </div>
                     </div>
                 </div>
 
@@ -447,7 +451,7 @@
                                                                 <input type="text" class="form-control form-control-sm" id="newNcDisplayName" placeholder="Display name">
                                                             </div>
                                                             <div class="col-12">
-                                                                <input type="email" class="form-control form-control-sm" id="newNcEmail" placeholder="Email — Nextcloud will send an activation link">
+                                                                <input type="email" class="form-control form-control-sm" id="newNcEmail" placeholder="Email (Nextcloud will send an activation link)">
                                                             </div>
                                                             <div class="col-12 d-flex align-items-center gap-2">
                                                                 <button type="button" class="btn btn-sm btn-primary" id="submitCreateNcUserBtn">
