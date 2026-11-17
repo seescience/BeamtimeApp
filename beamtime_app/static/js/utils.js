@@ -890,6 +890,16 @@ function populateViewDetails(experiment) {
     }
 
 
+    // Beamline contact
+    if (!isBlank(experiment.beamline_contact_name)) {
+        const contactVal = !isBlank(experiment.beamline_contact_email)
+            ? `<a href="mailto:${experiment.beamline_contact_email}">${experiment.beamline_contact_name}</a>`
+            : experiment.beamline_contact_name;
+        setDetailProp('detailViewBeamlineContact', contactVal, true);
+    } else {
+        setDetailProp('detailViewBeamlineContact', null);
+    }
+
     // Description (right column, always set, no row hiding)
     const descriptionEl = document.getElementById('detailViewDescription');
     if (descriptionEl) descriptionEl.textContent = experiment.description || '';
