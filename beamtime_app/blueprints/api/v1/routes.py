@@ -19,7 +19,7 @@ from flask_login import login_required
 
 from beamtime_app.crud import add_to_queue, get_all_entries, get_experiments, get_info_value
 from beamtime_app.models import Acknowledgment, APSBeamline, Info, ProcessStatus, Run, Technique
-from beamtime_app.services import create_nextcloud_mount, create_nextcloud_user, is_nextcloud_configured, search_nextcloud_users
+from beamtime_app.services import add_users_to_nextcloud_mount, create_nextcloud_mount, create_nextcloud_user, is_nextcloud_configured, list_nextcloud_mounts, search_nextcloud_users
 from beamtime_app.pvlog_yaml import empty_pvlog_config, parse_pvlog_yaml, serialize_pvlog_yaml
 from beamtime_app.utils import (
     format_info_modification_time,
@@ -398,10 +398,35 @@ def nextcloud_user_create():
         return jsonify({"error": str(e)}), 500
 
 
+@api_v1.route("/nextcloud_mount", methods=["GET"])
+@login_required
+def nextcloud_mount_lookup():
+    """Find an existing Nextcloud mount for a given server path."""
+    if not is_nextcloud_configured():
+        return jsonify({"error": "Nextcloud is not configured on this server"}), 503
+
+    path = request.args.get("path", "").strip()
+    if not path:
+        return jsonify({"error": "path is required"}), 400
+
+    try:
+        mounts = list_nextcloud_mounts()
+        for m in mounts:
+            datadir = (m.get("configuration") or {}).get("datadir", "")
+            if datadir == path:
+                mount_id = m.get("mount_id") or m.get("id")
+                mount_point = (m.get("mount_point") or m.get("mountPoint") or "").lstrip("/")
+                users = m.get("applicable_users") or []
+                return jsonify({"mount": {"id": mount_id, "mount_point": mount_point, "server_path": datadir, "users": users}})
+        return jsonify({"mount": None})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @api_v1.route("/nextcloud_mount", methods=["POST"])
 @login_required
 def nextcloud_mount():
-    """Create a Nextcloud local storage mount for the given users."""
+    """Create a Nextcloud local storage mount, or add users to an existing one."""
     if not is_nextcloud_configured():
         return jsonify({"error": "Nextcloud is not configured on this server"}), 503
 
@@ -409,6 +434,16 @@ def nextcloud_mount():
     mount_point = data.get("mount_point", "").strip()
     server_path = data.get("server_path", "").strip()
     users = [u.strip() for u in data.get("users", []) if u.strip()]
+    mount_id = data.get("mount_id")
+
+    if mount_id is not None:
+        if not users:
+            return jsonify({"error": "At least one Nextcloud username is required"}), 400
+        try:
+            add_users_to_nextcloud_mount(int(mount_id), users)
+            return jsonify({"success": True, "mount": {"id": mount_id, "mount_point": mount_point}})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
 
     if not mount_point:
         return jsonify({"error": "Mount name is required"}), 400

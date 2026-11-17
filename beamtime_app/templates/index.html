@@ -353,7 +353,11 @@
                                             <div class="row g-3 mt-1">
                                                 <div class="col-12">
                                                     <label class="form-label">Nextcloud Users</label>
-                                                    <div class="form-text mb-1">Search by name to find Nextcloud users.</div>
+                                                    <div id="nextcloudExistingUsers" class="mb-2" hidden>
+                                                        <div class="small text-muted mb-1">Currently shared with:</div>
+                                                        <div id="nextcloudExistingUsersList" class="d-flex flex-wrap gap-1"></div>
+                                                    </div>
+                                                    <div class="form-text mb-1">Search by name to add users.</div>
                                                     <div id="nextcloudRecipientsContainer" class="d-flex flex-column gap-2"></div>
                                                     <div class="d-flex gap-2 mt-2">
                                                         <button type="button" class="btn btn-sm btn-outline-secondary" id="addNextcloudRecipientBtn">

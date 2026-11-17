@@ -14,6 +14,7 @@
 let currentSortState = [];
 let currentViewExperimentId = null;
 let currentEditingExperiment = null;
+let _existingNextcloudMount = null;
 
 function statusCssClass(status) {
     return `status-${String(status || 'unknown').toLowerCase().replace(/\s+/g, '-')}`;
@@ -1445,20 +1446,83 @@ function resetNextcloudSection() {
     const nextcloudPathEl = document.getElementById('nextcloudPath');
     const mountNameEl = document.getElementById('nextcloudMountName');
     const statusEl = document.getElementById('nextcloudShareStatus');
+    const shareBtn = document.getElementById('shareNextcloudBtn');
+    const existingUsersEl = document.getElementById('nextcloudExistingUsers');
+    const existingUsersListEl = document.getElementById('nextcloudExistingUsersList');
     const dataPath = document.getElementById('dataPath')?.value || '';
 
+    _existingNextcloudMount = null;
+
     if (container) container.innerHTML = '';
+    if (existingUsersListEl) existingUsersListEl.innerHTML = '';
+    if (existingUsersEl) existingUsersEl.hidden = true;
     if (nextcloudPathEl) {
         delete nextcloudPathEl.dataset.userOverride;
         nextcloudPathEl.value = dataPath;
+        nextcloudPathEl.readOnly = false;
     }
     if (mountNameEl) {
         delete mountNameEl.dataset.userOverride;
         mountNameEl.value = _lastPathSegment(dataPath);
+        mountNameEl.readOnly = false;
+    }
+    if (shareBtn) {
+        shareBtn.innerHTML = '<i class="bi bi-cloud-arrow-up me-1"></i>Create Nextcloud Mount';
+        shareBtn.disabled = false;
     }
     if (statusEl) {
         statusEl.textContent = '';
         statusEl.className = 'small';
+    }
+
+    if (dataPath) fetchExistingMount(dataPath);
+}
+
+function fetchExistingMount(dataPath) {
+    const statusEl = document.getElementById('nextcloudShareStatus');
+    if (statusEl) { statusEl.textContent = 'Checking for existing share…'; statusEl.className = 'small text-muted'; }
+
+    fetch(`/api/v1/nextcloud_mount?path=${encodeURIComponent(dataPath)}`)
+        .then(r => r.json())
+        .then(data => {
+            if (statusEl) { statusEl.textContent = ''; statusEl.className = 'small'; }
+            if (data.mount) {
+                _existingNextcloudMount = data.mount;
+                _applyExistingMount(data.mount);
+            }
+        })
+        .catch(() => {
+            if (statusEl) { statusEl.textContent = ''; statusEl.className = 'small'; }
+        });
+}
+
+function _applyExistingMount(mount) {
+    const mountNameEl = document.getElementById('nextcloudMountName');
+    const nextcloudPathEl = document.getElementById('nextcloudPath');
+    const shareBtn = document.getElementById('shareNextcloudBtn');
+    const statusEl = document.getElementById('nextcloudShareStatus');
+    const existingUsersEl = document.getElementById('nextcloudExistingUsers');
+    const existingUsersListEl = document.getElementById('nextcloudExistingUsersList');
+
+    if (mountNameEl) { mountNameEl.value = mount.mount_point; mountNameEl.readOnly = true; mountNameEl.dataset.userOverride = '1'; }
+    if (nextcloudPathEl) { nextcloudPathEl.value = mount.server_path; nextcloudPathEl.readOnly = true; nextcloudPathEl.dataset.userOverride = '1'; }
+
+    if (existingUsersListEl) {
+        existingUsersListEl.innerHTML = '';
+        (mount.users || []).forEach(uid => {
+            const badge = document.createElement('span');
+            badge.className = 'badge bg-secondary';
+            badge.textContent = uid;
+            existingUsersListEl.appendChild(badge);
+        });
+    }
+    if (existingUsersEl) existingUsersEl.hidden = !(mount.users && mount.users.length);
+
+    if (shareBtn) shareBtn.innerHTML = '<i class="bi bi-person-plus me-1"></i>Add Users to Mount';
+
+    if (statusEl) {
+        statusEl.textContent = `Existing mount ‘${mount.mount_point}’ found (${(mount.users || []).length} user(s)).`;
+        statusEl.className = 'small text-success';
     }
 }
 
@@ -1600,6 +1664,7 @@ function shareOnNextcloud() {
     const mountPoint = document.getElementById('nextcloudMountName')?.value.trim();
     const statusEl = document.getElementById('nextcloudShareStatus');
     const shareBtn = document.getElementById('shareNextcloudBtn');
+    const isExisting = !!_existingNextcloudMount;
 
     const users = Array.from(document.querySelectorAll('.nextcloud-recipient-email'))
         .map(el => el.value.trim())
@@ -1611,13 +1676,15 @@ function shareOnNextcloud() {
         return;
     }
 
-    if (!serverPath) {
-        if (statusEl) { statusEl.textContent = 'Server path is required.'; statusEl.className = 'small text-danger'; }
-        return;
-    }
-    if (!mountPoint) {
-        if (statusEl) { statusEl.textContent = 'Mount name is required.'; statusEl.className = 'small text-danger'; }
-        return;
+    if (!isExisting) {
+        if (!serverPath) {
+            if (statusEl) { statusEl.textContent = 'Server path is required.'; statusEl.className = 'small text-danger'; }
+            return;
+        }
+        if (!mountPoint) {
+            if (statusEl) { statusEl.textContent = 'Mount name is required.'; statusEl.className = 'small text-danger'; }
+            return;
+        }
     }
     if (users.length === 0) {
         if (statusEl) { statusEl.textContent = 'Add at least one Nextcloud user.'; statusEl.className = 'small text-danger'; }
@@ -1625,33 +1692,60 @@ function shareOnNextcloud() {
     }
 
     shareBtn.disabled = true;
-    if (statusEl) { statusEl.textContent = 'Creating mount…'; statusEl.className = 'small text-muted'; }
+    const actionText = isExisting ? 'Adding users…' : 'Creating mount…';
+    if (statusEl) { statusEl.textContent = actionText; statusEl.className = 'small text-muted'; }
+
+    const body = { mount_point: mountPoint, server_path: serverPath, users };
+    if (isExisting) body.mount_id = _existingNextcloudMount.id;
 
     fetch('/api/v1/nextcloud_mount', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mount_point: mountPoint, server_path: serverPath, users }),
+        body: JSON.stringify(body),
     })
     .then(r => r.json())
     .then(data => {
         shareBtn.disabled = false;
         if (data.success) {
-            if (statusEl) {
-                statusEl.textContent = `Mount '${mountPoint}' created for ${users.length} user(s).`;
-                statusEl.className = 'small text-success';
+            if (isExisting) {
+                // Add newly shared users to the existing users display
+                const existingUsersListEl = document.getElementById('nextcloudExistingUsersList');
+                const existingUsersEl = document.getElementById('nextcloudExistingUsers');
+                if (existingUsersListEl) {
+                    users.forEach(uid => {
+                        const badge = document.createElement('span');
+                        badge.className = 'badge bg-secondary';
+                        badge.textContent = uid;
+                        existingUsersListEl.appendChild(badge);
+                    });
+                }
+                if (existingUsersEl) existingUsersEl.hidden = false;
+                // Clear new recipient rows
+                const container = document.getElementById('nextcloudRecipientsContainer');
+                if (container) container.innerHTML = '';
+                if (statusEl) {
+                    statusEl.textContent = `Added ${users.length} user(s) to mount '${mountPoint}'.`;
+                    statusEl.className = 'small text-success';
+                }
+                showNotification('success', `Nextcloud: added ${users.length} user(s) to '${mountPoint}'.`);
+            } else {
+                if (statusEl) {
+                    statusEl.textContent = `Mount '${mountPoint}' created for ${users.length} user(s).`;
+                    statusEl.className = 'small text-success';
+                }
+                showNotification('success', `Nextcloud: mount '${mountPoint}' created successfully.`);
             }
-            showNotification('success', `Nextcloud: mount '${mountPoint}' created successfully.`);
         } else {
-            const msg = data.error || 'Mount creation failed.';
+            const msg = data.error || (isExisting ? 'Failed to add users.' : 'Mount creation failed.');
             if (statusEl) { statusEl.textContent = msg; statusEl.className = 'small text-danger'; }
-            showNotification('error', `Nextcloud mount failed: ${msg}`);
+            showNotification('error', `Nextcloud: ${msg}`);
         }
     })
     .catch(err => {
         shareBtn.disabled = false;
         const msg = 'Request failed. Please try again.';
         if (statusEl) { statusEl.textContent = msg; statusEl.className = 'small text-danger'; }
-        showNotification('error', `Nextcloud mount failed: ${err.message}`);
+        showNotification('error', `Nextcloud: ${err.message}`);
     });
 }
 

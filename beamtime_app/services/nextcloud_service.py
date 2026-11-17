@@ -13,6 +13,7 @@
 # ----------------------------------------------------------------------------------
 
 import logging
+import shlex
 from contextlib import contextmanager
 
 from flask import current_app
@@ -20,7 +21,7 @@ from gselib.cloud import NextcloudOCC
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["is_nextcloud_configured", "create_nextcloud_mount", "list_nextcloud_mounts", "search_nextcloud_users", "create_nextcloud_user"]
+__all__ = ["is_nextcloud_configured", "create_nextcloud_mount", "list_nextcloud_mounts", "add_users_to_nextcloud_mount", "search_nextcloud_users", "create_nextcloud_user"]
 
 
 def is_nextcloud_configured() -> bool:
@@ -69,6 +70,14 @@ def list_nextcloud_mounts() -> list:
     """List all Nextcloud external storage mounts."""
     with _occ() as occ:
         return occ.list_storages()
+
+
+def add_users_to_nextcloud_mount(mount_id: int, users: list[str]) -> None:
+    """Add users to an existing Nextcloud external storage mount."""
+    with _occ() as occ:
+        user_args = " ".join(f"--add-user={shlex.quote(u)}" for u in users)
+        occ._run(f"files_external:applicable {mount_id} {user_args}")
+    logger.info(f"Nextcloud: added {len(users)} user(s) to mount id={mount_id}")
 
 
 def create_nextcloud_user(uid: str, display_name: str, email: str) -> None:
