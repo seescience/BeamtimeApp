@@ -501,7 +501,13 @@ function initializeExperimentViews() {
     if (validateBtn) validateBtn.addEventListener('click', validateCurrentPath);
 
     const backBtn = document.getElementById('backToExperimentsBtn');
-    if (backBtn) backBtn.addEventListener('click', handleExperimentBack);
+    if (backBtn) backBtn.addEventListener('click', () => history.back());
+
+    window.addEventListener('popstate', (e) => {
+        if (currentViewExperimentId !== null) {
+            showExperimentsList();
+        }
+    });
 
     const editBtn = document.getElementById('detailEditBtn');
     if (editBtn) {
@@ -576,8 +582,10 @@ function showExperimentView(experimentId) {
     currentViewExperimentId = experimentId;
     currentEditingExperiment = null;
 
+    history.pushState({ experimentDetail: true, id: experimentId }, '', window.location.href);
+
     if (panel) panel.classList.add('panel-has-detail');
-    if (listView) listView.hidden = false;
+    if (listView) listView.hidden = true;
     if (detailView) detailView.hidden = false;
 
     document.querySelectorAll('.experiment-row.row-active').forEach(r => r.classList.remove('row-active'));
