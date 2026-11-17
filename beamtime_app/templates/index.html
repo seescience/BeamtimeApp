@@ -3,123 +3,87 @@
 {% set total_count = experiments|length %}
 
 <div class="dashboard">
-    <div class="dashboard-backdrop" id="sidebarBackdrop" hidden></div>
-
-    <aside class="dashboard-sidebar" id="dashboardSidebar">
-        <header class="dash-guild-header">
-            <div class="dash-guild-identity">
+    <div class="dashboard-main">
+        <div class="dash-header">
+            <div class="dash-header-logo">
                 <img src="https://seescience.org/wp-content/uploads/2024/07/NSF-SEES-Logo.png"
                      alt="NSF SEES Logo"
                      class="dash-guild-logo">
-                <span class="dash-guild-name">Beamtime</span>
             </div>
-        </header>
-
-        <div class="dash-sidebar-scroll">
-            <nav class="dash-nav" aria-label="Main navigation">
-                <a href="/" class="dash-nav-item active" aria-current="page">
-                    <i class="bi bi-grid-3x2-gap-fill dash-nav-item-icon" aria-hidden="true"></i>
-                    <span class="dash-nav-item-label">Experiments</span>
-                    <span class="dash-nav-badge">{{ total_count }}</span>
-                </a>
-            </nav>
-            <div class="dash-nav-divider"></div>
-
-            <form id="filterForm" method="get" action="/" class="dash-filters" autocomplete="off">
-                <div class="dash-section-label">
-                    <span><i class="bi bi-sliders me-1" aria-hidden="true"></i>Filters</span>
-                    <button type="button" class="dash-section-action" id="clearFiltersBtn" aria-label="Reset filters" title="Reset filters">
-                        <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
-                    </button>
-                </div>
-
-                <label class="dash-filter-row" for="runSelect">
-                    <span class="dash-filter-label">Run</span>
-                    <select id="runSelect" name="run" class="dash-filter-select" aria-label="Run">
-                        <option value="">All runs</option>
-                        {% for run in runs %}
-                        <option value="{{ run.id }}" {% if run.id == selected_run %}selected{% endif %}>{{ run.name }}</option>
-                        {% endfor %}
-                    </select>
-                </label>
-
-                <label class="dash-filter-row" for="beamlineSelect">
-                    <span class="dash-filter-label">Beamline</span>
-                    <select id="beamlineSelect" name="beamline" class="dash-filter-select" aria-label="Beamline">
-                        <option value="">All beamlines</option>
-                        {% for beamline in beamlines %}
-                        <option value="{{ beamline.id }}" {% if beamline.id == selected_beamline %}selected{% endif %}>{{ beamline.name }}</option>
-                        {% endfor %}
-                    </select>
-                </label>
-
-                <label class="dash-filter-row" for="techniqueSelect">
-                    <span class="dash-filter-label">Technique</span>
-                    <select id="techniqueSelect" name="technique" class="dash-filter-select" aria-label="Technique">
-                        <option value="">All techniques</option>
-                        {% for technique in techniques %}
-                        <option value="{{ technique.id }}" data-user="{{ technique.user_name }}" {% if technique.id == selected_technique %}selected{% endif %}>{{ technique.name }}</option>
-                        {% endfor %}
-                    </select>
-                </label>
-
-                <label class="dash-filter-row" for="statusSelect">
-                    <span class="dash-filter-label">Status</span>
-                    <select id="statusSelect" name="status" class="dash-filter-select" aria-label="Status">
-                        <option value="">All statuses</option>
-                        {% for status in process_statuses %}
-                        <option value="{{ status.id }}" {% if status.id == selected_status %}selected{% endif %}>{{ status.name }}</option>
-                        {% endfor %}
-                    </select>
-                </label>
-            </form>
-        </div>
-
-        <div class="dash-user-panel">
-            {% if current_user.is_authenticated %}
-            {% set uname = current_user.display_name or current_user.username or '' %}
-            {% set uparts = uname.split() %}
-            {% set uinit = (uparts[0][0] if uparts and uparts[0] else '?') + (uparts[-1][0] if uparts|length > 1 else '') %}
-            <span class="user-panel-avatar">{{ uinit | upper }}</span>
-            <span class="dash-user-name">{{ uname }}</span>
-            {% endif %}
-            <div class="dash-user-tools">
-                <a href="https://seescience.github.io/BeamtimeApp/" target="_blank" rel="noopener noreferrer" class="dash-user-tool" title="Documentation" aria-label="Documentation">
-                    <i class="bi bi-book"></i>
-                </a>
-                <a href="{{ url_for('auth.logout') }}" class="dash-user-tool" title="Logout" aria-label="Logout">
-                    <i class="bi bi-box-arrow-right"></i>
-                </a>
-            </div>
-        </div>
-    </aside>
-
-    <div class="dashboard-main">
         <header class="dash-topbar">
-            <button type="button" class="dash-menu-btn" id="sidebarTrigger" aria-label="Toggle sidebar">
-                <i class="bi bi-list"></i>
-            </button>
-            <div class="dash-topbar-copy">
-                <h1 class="dash-page-title">Experiments</h1>
-                <p class="dash-page-meta" data-last-synced="{{ last_modified or 'N/A' }}">
-                    <span id="dashboardVisibleCount">{{ total_count }}</span> of {{ total_count }} shown
-                    &middot; Synced {{ last_modified or "N/A" }}
-                </p>
+            <nav class="dash-topbar-nav">
+                <a href="/" class="dash-topbar-nav-item active" aria-current="page">Experiments</a>
+            </nav>
+            <div class="dash-user-panel">
+                {% if current_user.is_authenticated %}
+                {% set uname = current_user.display_name or current_user.username or '' %}
+                {% set uparts = uname.split() %}
+                {% set uinit = (uparts[0][0] if uparts and uparts[0] else '?') + (uparts[-1][0] if uparts|length > 1 else '') %}
+                <span class="user-panel-avatar">{{ uinit | upper }}</span>
+                <span class="dash-user-name">{{ uname }}</span>
+                {% endif %}
+                <div class="dash-user-tools">
+                    <a href="https://seescience.github.io/BeamtimeApp/" target="_blank" rel="noopener noreferrer" class="dash-user-tool" title="Documentation" aria-label="Documentation">
+                        <i class="bi bi-book"></i>
+                    </a>
+                    <a href="{{ url_for('auth.logout') }}" class="dash-user-tool" title="Logout" aria-label="Logout">
+                        <i class="bi bi-box-arrow-right"></i>
+                    </a>
+                </div>
             </div>
-            <div class="dash-search">
-                <i class="bi bi-search" aria-hidden="true"></i>
-                <input type="search"
-                       id="searchInput"
-                       name="search"
-                       form="filterForm"
-                       class="dash-search-input"
-                       placeholder="Search experiments..."
-                       value="{{ request.args.get('search', '') }}">
+            </header>
+            <div class="dash-filterbar">
+            <form id="filterForm" method="get" action="/" class="dash-topbar-filters" autocomplete="off">
+                <select id="runSelect" name="run" class="dash-filter-select" aria-label="Run">
+                    <option value="">All runs</option>
+                    {% for run in runs %}
+                    <option value="{{ run.id }}" {% if run.id == selected_run %}selected{% endif %}>{{ run.name }}</option>
+                    {% endfor %}
+                </select>
+                <select id="beamlineSelect" name="beamline" class="dash-filter-select" aria-label="Beamline">
+                    <option value="">All beamlines</option>
+                    {% for beamline in beamlines %}
+                    <option value="{{ beamline.id }}" {% if beamline.id == selected_beamline %}selected{% endif %}>{{ beamline.name }}</option>
+                    {% endfor %}
+                </select>
+                <select id="techniqueSelect" name="technique" class="dash-filter-select" aria-label="Technique">
+                    <option value="">All techniques</option>
+                    {% for technique in techniques %}
+                    <option value="{{ technique.id }}" data-user="{{ technique.user_name }}" {% if technique.id == selected_technique %}selected{% endif %}>{{ technique.name }}</option>
+                    {% endfor %}
+                </select>
+                <select id="statusSelect" name="status" class="dash-filter-select" aria-label="Status">
+                    <option value="">All statuses</option>
+                    {% for status in process_statuses %}
+                    <option value="{{ status.id }}" {% if status.id == selected_status %}selected{% endif %}>{{ status.name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="button" class="dash-section-action" id="clearFiltersBtn" aria-label="Reset filters" title="Reset filters">
+                    <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
+                </button>
+                <div class="dash-search">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input type="search"
+                           id="searchInput"
+                           name="search"
+                           class="dash-search-input"
+                           placeholder="Search experiments..."
+                           value="{{ request.args.get('search', '') }}">
+                </div>
+            </form>
             </div>
-        </header>
+        </div>
 
         <section class="dash-panel">
             <div id="experimentsListView" class="dash-list-view">
+                <div class="dash-table-status">
+                    <span class="dash-table-status-count">
+                        <span id="dashboardVisibleCount">{{ total_count }}</span> of {{ total_count }} experiments
+                    </span>
+                    <span class="dash-table-status-sync">
+                        Synced {{ last_modified or "N/A" }}
+                    </span>
+                </div>
                 <div class="dash-table-wrap">
                     <table class="dash-table">
                         <thead>
