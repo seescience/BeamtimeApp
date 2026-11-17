@@ -889,16 +889,6 @@ function populateViewDetails(experiment) {
         setDetailProp('detailViewEsafPdf', null);
     }
 
-    // Beamline contact with email link
-    function buildPersonValue(name, email) {
-        if (isBlank(name)) return null;
-        if (!isBlank(email)) {
-            return `${name} <br><small><a href="mailto:${email}">${email}</a></small>`;
-        }
-        return name;
-    }
-    const contactHtml = buildPersonValue(experiment.beamline_contact_name, experiment.beamline_contact_email);
-    setDetailProp('detailViewBeamlineContact', contactHtml, !!contactHtml);
 
     // Description (right column, always set, no row hiding)
     const descriptionEl = document.getElementById('detailViewDescription');
@@ -946,7 +936,8 @@ function populateViewDetails(experiment) {
                 const institution = u.institution || '';
                 const email = u.email && !isBlank(u.email)
                     ? `<a href="mailto:${u.email}">${u.email}</a>` : '';
-                const role = (spokespersonName && name.trim() === spokespersonName) ? 'PI' : 'User';
+                const roleLabel = (spokespersonName && name.trim() === spokespersonName) ? 'PI' : 'User';
+                const role = `<span class="role-pill role-pill--${roleLabel.toLowerCase()}">${roleLabel}</span>`;
                 const orcid = u.orcid && !isBlank(u.orcid)
                     ? `<a class="orcid-link" href="https://orcid.org/${u.orcid}" target="_blank">${u.orcid}</a>`
                     : '';
