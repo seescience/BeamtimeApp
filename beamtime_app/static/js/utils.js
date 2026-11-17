@@ -509,15 +509,6 @@ function initializeExperimentViews() {
         }
     });
 
-    const editBtn = document.getElementById('detailEditBtn');
-    if (editBtn) {
-        editBtn.addEventListener('click', () => {
-            if (currentViewExperimentId) {
-                showExperimentEdit(currentViewExperimentId);
-            }
-        });
-    }
-
     initializePVLoggerFilePicker();
     loadPVLoggerTemplates();
     initializeDoiCheckboxes();
@@ -538,11 +529,6 @@ function setDashboardTopbar(title, meta) {
 }
 
 function handleExperimentBack() {
-    const editPanel = document.getElementById('experimentEditPanel');
-    if (editPanel && !editPanel.hidden && currentViewExperimentId) {
-        showExperimentView(currentViewExperimentId);
-        return;
-    }
     showExperimentsList();
 }
 
@@ -574,13 +560,10 @@ function showExperimentView(experimentId) {
     const panel = document.querySelector('.dash-panel');
     const listView = document.getElementById('experimentsListView');
     const detailView = document.getElementById('experimentDetailView');
-    const viewPanel = document.getElementById('experimentViewPanel');
-    const editPanel = document.getElementById('experimentEditPanel');
-    const editBtn = document.getElementById('detailEditBtn');
-    const addToQueueBtn = document.getElementById('addToQueueBtn');
+    const form = document.getElementById('experimentForm');
 
     currentViewExperimentId = experimentId;
-    currentEditingExperiment = null;
+    currentEditingExperiment = experimentId;
 
     history.pushState({ experimentDetail: true, id: experimentId }, '', window.location.href);
 
@@ -591,12 +574,14 @@ function showExperimentView(experimentId) {
     document.querySelectorAll('.experiment-row.row-active').forEach(r => r.classList.remove('row-active'));
     const selectedRow = document.querySelector(`tr[data-experiment-id="${experimentId}"]`);
     if (selectedRow) selectedRow.classList.add('row-active');
-    if (viewPanel) viewPanel.hidden = false;
-    if (editPanel) editPanel.hidden = true;
-    if (editBtn) editBtn.hidden = false;
-    if (addToQueueBtn) addToQueueBtn.hidden = true;
+
+    if (form) form.reset();
+    clearValidationMessage();
 
     populateExperimentView(experimentId);
+    loadExperimentData(experimentId, 'edit');
+    populateDataPathDropdown(experimentId);
+    resetNextcloudSection();
 
     const metaEl = document.querySelector('.dash-page-meta');
     const lastSynced = metaEl?.dataset.lastSynced || 'N/A';
@@ -608,43 +593,6 @@ function showExperimentView(experimentId) {
     );
 }
 
-function showExperimentEdit(experimentId) {
-    const viewPanel = document.getElementById('experimentViewPanel');
-    const editPanel = document.getElementById('experimentEditPanel');
-    const editBtn = document.getElementById('detailEditBtn');
-    const addToQueueBtn = document.getElementById('addToQueueBtn');
-    const form = document.getElementById('experimentForm');
-
-    if (!document.getElementById('experimentDetailView') || document.getElementById('experimentDetailView').hidden) {
-        showExperimentView(experimentId);
-    }
-
-    currentViewExperimentId = experimentId;
-    currentEditingExperiment = experimentId;
-
-    if (viewPanel) viewPanel.hidden = true;
-    if (editPanel) editPanel.hidden = false;
-    if (editBtn) editBtn.hidden = true;
-    if (addToQueueBtn) {
-        addToQueueBtn.hidden = false;
-        addToQueueBtn.innerHTML = '<i class="bi bi-plus-circle"></i> Add to Queue';
-    }
-
-    if (form) form.reset();
-    clearValidationMessage();
-    loadExperimentData(experimentId, 'edit');
-    populateDataPathDropdown(experimentId);
-    resetNextcloudSection();
-
-    const metaEl2 = document.querySelector('.dash-page-meta');
-    const lastSynced2 = metaEl2?.dataset.lastSynced || 'N/A';
-    const totalCount2 = document.querySelectorAll('#experimentsTableBody .experiment-row').length;
-    const visibleCount2 = document.getElementById('dashboardVisibleCount')?.textContent || totalCount2;
-    setDashboardTopbar(
-        'Experiments',
-        `<span id="dashboardVisibleCount">${visibleCount2}</span> of ${totalCount2} shown &middot; Synced ${lastSynced2}`
-    );
-}
 
 function populateExperimentView(experimentId) {
     const row = document.querySelector(`tr[data-experiment-id="${experimentId}"]`);
@@ -680,16 +628,7 @@ function loadExperimentData(experimentId, mode = 'view') {
     document.getElementById('experimentNumber').value = experimentNumber;
     document.getElementById('proposalNumber').value = proposal !== 'N/A' ? proposal : '';
     
-    // Set readonly/editable based on mode - title and proposal are always readonly
-    const titleInput = document.getElementById('experimentTitle');
-    const proposalInput = document.getElementById('proposalNumber');
-    
-    // Always keep title and proposal readonly
-    titleInput.setAttribute('readonly', true);
-    proposalInput.setAttribute('readonly', true);
-
     populateDataPathField(userFolder);
-    document.getElementById('createDoi').checked = true;
     
     // Reset acknowledgments and PVLogger path
     clearFileSelection();
@@ -910,12 +849,19 @@ function populateViewDetails(experiment) {
     const hasPvlog = setDetailProp('detailViewPvlogFile',
         (experiment.pvlog_file && !isBlank(experiment.pvlog_file)) ? experiment.pvlog_file : null);
 
-    let hasSesDoi = false;
+    const seesDoiEl = document.getElementById('detailViewSeesDoi');
+    const doiCreateOptions = document.getElementById('doiCreateOptions');
+    const createDoiCb = document.getElementById('createDoi');
+    const draftDoiCb = document.getElementById('draftDoi');
     if (experiment.sees_doi && !isBlank(experiment.sees_doi)) {
-        hasSesDoi = setDetailProp('detailViewSeesDoi',
-            `<a href="https://doi.org/${experiment.sees_doi}" target="_blank">${experiment.sees_doi}</a>`, true);
+        if (seesDoiEl) { seesDoiEl.innerHTML = `<a href="https://doi.org/${experiment.sees_doi}" target="_blank">${experiment.sees_doi}</a>`; seesDoiEl.hidden = false; }
+        if (doiCreateOptions) doiCreateOptions.hidden = true;
+        if (createDoiCb) { createDoiCb.checked = false; createDoiCb.disabled = true; }
+        if (draftDoiCb) { draftDoiCb.checked = false; draftDoiCb.disabled = true; }
     } else {
-        setDetailProp('detailViewSeesDoi', null);
+        if (seesDoiEl) { seesDoiEl.innerHTML = ''; seesDoiEl.hidden = true; }
+        if (doiCreateOptions) doiCreateOptions.hidden = false;
+        if (createDoiCb) { createDoiCb.checked = true; createDoiCb.disabled = false; }
     }
 
     let hasApsDoi = false;
@@ -925,9 +871,6 @@ function populateViewDetails(experiment) {
     } else {
         setDetailProp('detailViewApsDoi', null);
     }
-
-    const linksSection = document.getElementById('detailLinksSection');
-    if (linksSection) linksSection.hidden = !(hasDataPath || hasPvlog || hasSesDoi || hasApsDoi);
 
     // Users table
     const usersTitleEl = document.getElementById('detailViewUsersTitle');

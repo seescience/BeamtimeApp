@@ -139,63 +139,70 @@
                         <i class="bi bi-arrow-left"></i> Back
                     </button>
                     <div class="dash-detail-actions">
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="detailEditBtn">
-                            <i class="bi bi-pencil me-1"></i>Edit
-                        </button>
-                        <button type="button" class="btn btn-sm btn-primary" id="addToQueueBtn" hidden>
+                        <button type="button" class="btn btn-sm btn-primary" id="addToQueueBtn">
                             <i class="bi bi-plus-circle me-1"></i>Add to Queue
                         </button>
                     </div>
                 </div>
 
-                <div id="experimentViewPanel" class="dash-detail-scroll">
-                    <div class="detail-content">
+                <div class="dash-detail-scroll">
+                <div class="detail-section-card" id="experimentViewPanel">
+                    <div class="detail-panel-header">Overview</div>
                     <div class="detail-title-section">
                         <div class="detail-title-status" id="detailViewStatus"></div>
                         <h2 class="detail-title" id="detailViewTitle"></h2>
                     </div>
                     <div class="detail-body">
-                        <div class="detail-col-main">
-                            <div class="detail-panel-header">Details</div>
-                            <div class="detail-props">
-                                <div class="detail-prop">
-                                    <span class="detail-prop-label">Beamline</span>
-                                    <div class="detail-prop-value" id="detailViewBeamline"></div>
-                                </div>
-                                <div class="detail-prop">
-                                    <span class="detail-prop-label">Start date</span>
-                                    <div class="detail-prop-value" id="detailViewStartDate"></div>
-                                </div>
-                                <div class="detail-prop">
-                                    <span class="detail-prop-label">End date</span>
-                                    <div class="detail-prop-value" id="detailViewEndDate"></div>
-                                </div>
-                                <div class="detail-prop">
-                                    <span class="detail-prop-label">Proposal</span>
-                                    <div class="detail-prop-value" id="detailViewProposal"></div>
-                                </div>
-                                <div class="detail-prop">
-                                    <span class="detail-prop-label">ESAF</span>
-                                    <div class="detail-prop-value" id="detailViewExperimentNumber"></div>
-                                </div>
-                                <div class="detail-prop">
-                                    <span class="detail-prop-label">ESAF PDF</span>
-                                    <div class="detail-prop-value" id="detailViewEsafPdf"></div>
-                                </div>
-                                <div class="detail-prop">
-                                    <span class="detail-prop-label">Beamline contact</span>
-                                    <div class="detail-prop-value" id="detailViewBeamlineContact"></div>
-                                </div>
+                        <div class="detail-meta-strip">
+                            <div class="detail-prop">
+                                <span class="detail-prop-label">ESAF #</span>
+                                <div class="detail-prop-value" id="detailViewExperimentNumber"></div>
+                            </div>
+                            <div class="detail-prop">
+                                <span class="detail-prop-label">Proposal</span>
+                                <div class="detail-prop-value" id="detailViewProposal"></div>
+                            </div>
+                            <div class="detail-prop">
+                                <span class="detail-prop-label">Start time</span>
+                                <div class="detail-prop-value" id="detailViewStartDate"></div>
+                            </div>
+                            <div class="detail-prop">
+                                <span class="detail-prop-label">End time</span>
+                                <div class="detail-prop-value" id="detailViewEndDate"></div>
+                            </div>
+                            <div class="detail-prop">
+                                <span class="detail-prop-label">Beamline</span>
+                                <div class="detail-prop-value" id="detailViewBeamline"></div>
+                            </div>
+                            <div class="detail-prop">
+                                <span class="detail-prop-label">Contact</span>
+                                <div class="detail-prop-value" id="detailViewBeamlineContact"></div>
+                            </div>
+                            <div class="detail-prop">
+                                <span class="detail-prop-label">ESAF PDF</span>
+                                <div class="detail-prop-value" id="detailViewEsafPdf"></div>
                             </div>
                         </div>
-                        <div class="detail-col-side">
-                            <div class="detail-panel-header">Description</div>
-                            <div class="detail-description-body text-break" id="detailViewDescription"></div>
-                        </div>
+                        <div class="detail-description-body text-break" id="detailViewDescription"></div>
                     </div>
 
-                    <div class="detail-links-section" id="detailLinksSection">
-                        <div class="detail-panel-header">Links &amp; Files</div>
+                    <div class="users-section">
+                        <div class="users-section-header">
+                            <span id="detailViewUsersTitle">Experiment Users</span>
+                        </div>
+                        <div id="detailViewUsers"></div>
+                    </div>
+                </div>
+
+                <div id="experimentEditPanel">
+                    <form id="experimentForm">
+                        <input type="hidden" id="experimentId" name="experimentId">
+                        <input type="hidden" id="experimentTitle" name="title">
+                        <input type="hidden" id="experimentNumber" name="experimentNumber">
+                        <input type="hidden" id="proposalNumber" name="proposalNumber">
+
+                        <div class="detail-section-card">
+                        <div class="detail-panel-header">Data</div>
                         <div class="detail-props">
                             <div class="detail-prop">
                                 <span class="detail-prop-label">Data path</span>
@@ -205,279 +212,248 @@
                                 <span class="detail-prop-label">PVLog file</span>
                                 <div class="detail-prop-value font-monospace text-break" id="detailViewPvlogFile"></div>
                             </div>
+                        </div>
+                        <div class="edit-section-body">
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <label for="dataPath" class="form-label">Data Path</label>
+                                    <div class="position-relative">
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" id="dataPath" name="dataPath">
+                                            <button class="btn btn-outline-secondary" type="button" id="dataPathDropdownBtn" title="Select data path template">
+                                                <i class="bi bi-chevron-down"></i>
+                                            </button>
+                                            <button class="btn btn-outline-secondary" type="button" id="validatePathBtn" title="Validate Path">
+                                                <i class="bi bi-check2-circle"></i>
+                                            </button>
+                                        </div>
+                                        <div class="dropdown-menu position-absolute" id="dataPathTemplates">
+                                            {% for technique in techniques %}
+                                            {% if technique.base_dir %}
+                                            <a class="dropdown-item" href="#" data-template="{{ technique.base_dir }}" data-user="{{ technique.user_name }}">{{ technique.base_dir }}</a>
+                                            {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <span id="pathValidationMessage" class="small"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <div class="dash-card pvlog-card" id="pvLoggerCard">
+                                        <header class="dash-card-header">
+                                            <h2 class="dash-card-title">PVLogger</h2>
+                                            <span id="pvLoggerEditorStatus" class="pvlog-status-text small"></span>
+                                        </header>
+
+                                        <div class="dash-card-section pvlog-top-section">
+                                            <label for="pvLoggerTemplateSelect" class="form-label">Source</label>
+                                            <div class="input-group input-group-sm pvlog-source-input-group">
+                                                <div class="form-control pvlog-source-picker">
+                                                    <select class="form-select pvlog-source-select" id="pvLoggerTemplateSelect">
+                                                        <option value="">Select a template...</option>
+                                                    </select>
+                                                    <div class="pvlog-source-loaded" id="pvLoggerPathDisplayRow" hidden>
+                                                        <span class="pvlog-path-text font-monospace" id="pvLoggerPathDisplay"></span>
+                                                        <button class="pvlog-source-clear" type="button" id="clearFileBtn" title="Clear selection" aria-label="Clear selection">
+                                                            <i class="bi bi-x-lg"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <button class="btn btn-outline-secondary" type="button" id="createNewPvlogBtn" title="Create new file" aria-label="Create new file">
+                                                    <i class="bi bi-file-earmark-plus"></i>
+                                                </button>
+                                                <button class="btn btn-outline-secondary" type="button" id="selectFileBtn" title="Upload YAML file" aria-label="Upload YAML file">
+                                                    <i class="bi bi-upload"></i>
+                                                </button>
+                                            </div>
+                                            <input type="file" id="pvLoggerPath" name="pvLoggerPath" accept=".yaml,.yml" style="display: none;">
+                                            <input type="hidden" id="pvLoggerPathValue" name="pvLoggerPathValue">
+
+                                            <div id="pvLoggerEditorFields" class="pvlog-config-row" style="display: none;">
+                                                <div class="row g-2">
+                                                    <div class="col-md-3">
+                                                        <label class="form-label" for="pvlogStartDatetime">Start</label>
+                                                        <input type="text" class="form-control form-control-sm pvlog-field" id="pvlogStartDatetime" placeholder="YYYY-MM-DD HH:MM:SS">
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label" for="pvlogEndDatetime">End</label>
+                                                        <input type="text" class="form-control form-control-sm pvlog-field" id="pvlogEndDatetime" placeholder="YYYY-MM-DD HH:MM:SS">
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label" for="pvlogEscanCredentials">EScan credentials</label>
+                                                        <input type="text" class="form-control form-control-sm pvlog-field font-monospace" id="pvlogEscanCredentials" placeholder="/path/to/escan_credentials.dat">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div id="pvLoggerEditorRow" class="dash-card-section pvlog-editor-section" style="display: none;">
+                                            <div class="pvlog-panels">
+                                                <div class="pvlog-panel">
+                                                    <div class="pvlog-panel-header">
+                                                        <span class="pvlog-panel-title">Instruments</span>
+                                                        <button type="button" class="btn btn-link btn-sm pvlog-add-btn" id="pvlogAddInstrumentBtn">Add</button>
+                                                    </div>
+                                                    <div class="pvlog-panel-frame">
+                                                        <div class="pvlog-panel-scroll">
+                                                            <div id="pvlogInstrumentsList" class="pvlog-instruments-list"></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="pvlog-panel pvlog-panel--wide">
+                                                    <div class="pvlog-panel-header">
+                                                        <span class="pvlog-panel-title">Process variables</span>
+                                                        <button type="button" class="btn btn-link btn-sm pvlog-add-btn" id="pvlogAddPvBtn">Add</button>
+                                                    </div>
+                                                    <div class="pvlog-panel-frame">
+                                                        <div class="pvlog-panel-scroll">
+                                                            <table class="pvlog-pvs-table mb-0">
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th scope="col">PV name</th>
+                                                                        <th scope="col">Description</th>
+                                                                        <th scope="col">Interval</th>
+                                                                        <th scope="col" class="pvlog-pv-actions-col"></th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody id="pvlogPvsBody"></tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% if nextcloud_enabled %}
+                            <div class="row mb-4 mt-2">
+                                <div class="col-12">
+                                    <div class="dash-card" id="nextcloudCard">
+                                        <header class="dash-card-header">
+                                            <h2 class="dash-card-title">Nextcloud Sharing</h2>
+                                        </header>
+                                        <div class="dash-card-section">
+                                            <div class="row g-3">
+                                                <div class="col-md-8">
+                                                    <label for="nextcloudPath" class="form-label">Server Path</label>
+                                                    <input type="text" class="form-control" id="nextcloudPath" placeholder="e.g. /cars4/data/xas_user/2026.3/Eguiguren">
+                                                    <div class="form-text">Local filesystem path on the Nextcloud server. The folder will be created as an external storage mount.</div>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label for="nextcloudMountName" class="form-label">Mount Name</label>
+                                                    <input type="text" class="form-control" id="nextcloudMountName" placeholder="e.g. Eguiguren">
+                                                    <div class="form-text">Name shown to users in Nextcloud.</div>
+                                                </div>
+                                            </div>
+                                            <div class="row g-3 mt-1">
+                                                <div class="col-12">
+                                                    <label class="form-label">Nextcloud Users</label>
+                                                    <div class="form-text mb-1">Search by name to find Nextcloud users.</div>
+                                                    <div id="nextcloudRecipientsContainer" class="d-flex flex-column gap-2"></div>
+                                                    <div class="d-flex gap-2 mt-2">
+                                                        <button type="button" class="btn btn-sm btn-outline-secondary" id="addNextcloudRecipientBtn">
+                                                            <i class="bi bi-plus-circle me-1"></i>Add Existing User
+                                                        </button>
+                                                        <button type="button" class="btn btn-sm btn-outline-secondary" id="createNextcloudUserBtn"
+                                                                data-bs-toggle="collapse" data-bs-target="#createNextcloudUserForm">
+                                                            <i class="bi bi-person-plus me-1"></i>New User
+                                                        </button>
+                                                    </div>
+                                                    <div class="collapse mt-2" id="createNextcloudUserForm">
+                                                        <div class="card card-body p-2">
+                                                            <div class="row g-2">
+                                                                <div class="col-6">
+                                                                    <input type="text" class="form-control form-control-sm" id="newNcUsername" placeholder="Username (uid)">
+                                                                </div>
+                                                                <div class="col-6">
+                                                                    <input type="text" class="form-control form-control-sm" id="newNcDisplayName" placeholder="Display name">
+                                                                </div>
+                                                                <div class="col-12">
+                                                                    <input type="email" class="form-control form-control-sm" id="newNcEmail" placeholder="Email (Nextcloud will send an activation link)">
+                                                                </div>
+                                                                <div class="col-12 d-flex align-items-center gap-2">
+                                                                    <button type="button" class="btn btn-sm btn-primary" id="submitCreateNcUserBtn">
+                                                                        <i class="bi bi-person-check me-1"></i>Create &amp; Add
+                                                                    </button>
+                                                                    <span id="createNcUserStatus" class="small"></span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="row mt-3">
+                                                <div class="col-12 d-flex align-items-center gap-3">
+                                                    <button type="button" class="btn btn-outline-primary btn-sm" id="shareNextcloudBtn">
+                                                        <i class="bi bi-cloud-arrow-up me-1"></i>Create Nextcloud Mount
+                                                    </button>
+                                                    <span id="nextcloudShareStatus" class="small"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        </div>
+
+                        <div class="detail-section-card">
+                        <div class="detail-panel-header">Publication Information</div>
+                        <div class="detail-props">
                             <div class="detail-prop">
                                 <span class="detail-prop-label">SEES DOI</span>
-                                <div class="detail-prop-value" id="detailViewSeesDoi"></div>
+                                <div>
+                                    <div class="detail-prop-value" id="detailViewSeesDoi"></div>
+                                    <div id="doiCreateOptions">
+                                        <div class="form-check form-check-inline me-3">
+                                            <input class="form-check-input" type="checkbox" id="createDoi" name="createDoi">
+                                            <label class="form-check-label" for="createDoi">Create SEES DOI</label>
+                                        </div>
+                                        <div class="form-check form-check-inline d-none" id="draftDoiContainer">
+                                            <input class="form-check-input" type="checkbox" id="draftDoi" name="draftDoi" disabled>
+                                            <label class="form-check-label" for="draftDoi">Draft</label>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <div class="detail-prop">
                                 <span class="detail-prop-label">APS DOI</span>
                                 <div class="detail-prop-value" id="detailViewApsDoi"></div>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="users-section">
-                        <div class="users-section-header">
-                            <span id="detailViewUsersTitle">Experiment Users</span>
-                        </div>
-                        <div id="detailViewUsers"></div>
-                    </div>
-                    </div>
-                </div>
-
-                <div id="experimentEditPanel" class="dash-detail-scroll" hidden>
-                    <div class="edit-panel-header">
-                        <h3 class="edit-panel-title">Edit Experiment</h3>
-                    </div>
-                    <form id="experimentForm">
-                        <input type="hidden" id="experimentId" name="experimentId">
-
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <label for="experimentTitle" class="form-label">Title</label>
-                                <input type="text" class="form-control" id="experimentTitle" name="title" readonly>
-                            </div>
-                            <div class="col-md-3">
-                                <label for="experimentNumber" class="form-label">ESAF Number</label>
-                                <input type="text" class="form-control" id="experimentNumber" name="experimentNumber" readonly>
-                            </div>
-                            <div class="col-md-3">
-                                <label for="proposalNumber" class="form-label">Proposal Number</label>
-                                <input type="text" class="form-control" id="proposalNumber" name="proposalNumber" readonly>
-                            </div>
-                        </div>
-
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <label for="dataPath" class="form-label">Data Path</label>
-                                <div class="position-relative">
-                                    <div class="input-group">
-                                        <input type="text" class="form-control" id="dataPath" name="dataPath">
-                                        <button class="btn btn-outline-secondary" type="button" id="dataPathDropdownBtn" title="Select data path template">
-                                            <i class="bi bi-chevron-down"></i>
-                                        </button>
-                                        <button class="btn btn-outline-secondary" type="button" id="validatePathBtn" title="Validate Path">
-                                            <i class="bi bi-check2-circle"></i>
-                                        </button>
-                                    </div>
-                                    <div class="dropdown-menu position-absolute" id="dataPathTemplates">
-                                        {% for technique in techniques %}
-                                        {% if technique.base_dir %}
-                                        <a class="dropdown-item" href="#" data-template="{{ technique.base_dir }}" data-user="{{ technique.user_name }}">{{ technique.base_dir }}</a>
-                                        {% endif %}
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                                <div class="mt-2">
-                                    <span id="pathValidationMessage" class="small"></span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <div class="dash-card pvlog-card" id="pvLoggerCard">
-                                    <header class="dash-card-header">
-                                        <h2 class="dash-card-title">PVLogger</h2>
-                                        <span id="pvLoggerEditorStatus" class="pvlog-status-text small"></span>
-                                    </header>
-
-                                    <div class="dash-card-section pvlog-top-section">
-                                        <label for="pvLoggerTemplateSelect" class="form-label">Source</label>
-                                        <div class="input-group input-group-sm pvlog-source-input-group">
-                                            <div class="form-control pvlog-source-picker">
-                                                <select class="form-select pvlog-source-select" id="pvLoggerTemplateSelect">
-                                                    <option value="">Select a template...</option>
-                                                </select>
-                                                <div class="pvlog-source-loaded" id="pvLoggerPathDisplayRow" hidden>
-                                                    <span class="pvlog-path-text font-monospace" id="pvLoggerPathDisplay"></span>
-                                                    <button class="pvlog-source-clear" type="button" id="clearFileBtn" title="Clear selection" aria-label="Clear selection">
-                                                        <i class="bi bi-x-lg"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <button class="btn btn-outline-secondary" type="button" id="createNewPvlogBtn" title="Create new file" aria-label="Create new file">
-                                                <i class="bi bi-file-earmark-plus"></i>
-                                            </button>
-                                            <button class="btn btn-outline-secondary" type="button" id="selectFileBtn" title="Upload YAML file" aria-label="Upload YAML file">
-                                                <i class="bi bi-upload"></i>
-                                            </button>
+                        <div class="edit-section-body">
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <label class="form-label">Acknowledgments</label>
+                                    <div class="dash-card acknowledgments-container">
+                                        <div class="acknowledgments-selected mb-2">
+                                            <span id="selectedAcknowledgmentsText" class="text-muted">No acknowledgments selected</span>
                                         </div>
-                                        <input type="file" id="pvLoggerPath" name="pvLoggerPath" accept=".yaml,.yml" style="display: none;">
-                                        <input type="hidden" id="pvLoggerPathValue" name="pvLoggerPathValue">
-
-                                        <div id="pvLoggerEditorFields" class="pvlog-config-row" style="display: none;">
-                                            <div class="row g-2">
-                                                <div class="col-md-3">
-                                                    <label class="form-label" for="pvlogStartDatetime">Start</label>
-                                                    <input type="text" class="form-control form-control-sm pvlog-field" id="pvlogStartDatetime" placeholder="YYYY-MM-DD HH:MM:SS">
-                                                </div>
-                                                <div class="col-md-3">
-                                                    <label class="form-label" for="pvlogEndDatetime">End</label>
-                                                    <input type="text" class="form-control form-control-sm pvlog-field" id="pvlogEndDatetime" placeholder="YYYY-MM-DD HH:MM:SS">
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label class="form-label" for="pvlogEscanCredentials">EScan credentials</label>
-                                                    <input type="text" class="form-control form-control-sm pvlog-field font-monospace" id="pvlogEscanCredentials" placeholder="/path/to/escan_credentials.dat">
-                                                </div>
+                                        <div class="acknowledgments-list border rounded p-3">
+                                            {% for ack in acknowledgments %}
+                                            <div class="form-check">
+                                                <input class="form-check-input acknowledgment-checkbox" type="checkbox" value="{{ ack.id }}" id="ack{{ ack.id }}">
+                                                <label class="form-check-label" for="ack{{ ack.id }}">
+                                                    {{ ack.title }}
+                                                </label>
                                             </div>
-                                        </div>
-                                    </div>
-
-                                    <div id="pvLoggerEditorRow" class="dash-card-section pvlog-editor-section" style="display: none;">
-                                        <div class="pvlog-panels">
-                                            <div class="pvlog-panel">
-                                                <div class="pvlog-panel-header">
-                                                    <span class="pvlog-panel-title">Instruments</span>
-                                                    <button type="button" class="btn btn-link btn-sm pvlog-add-btn" id="pvlogAddInstrumentBtn">Add</button>
-                                                </div>
-                                                <div class="pvlog-panel-frame">
-                                                    <div class="pvlog-panel-scroll">
-                                                        <div id="pvlogInstrumentsList" class="pvlog-instruments-list"></div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="pvlog-panel pvlog-panel--wide">
-                                                <div class="pvlog-panel-header">
-                                                    <span class="pvlog-panel-title">Process variables</span>
-                                                    <button type="button" class="btn btn-link btn-sm pvlog-add-btn" id="pvlogAddPvBtn">Add</button>
-                                                </div>
-                                                <div class="pvlog-panel-frame">
-                                                    <div class="pvlog-panel-scroll">
-                                                        <table class="pvlog-pvs-table mb-0">
-                                                            <thead>
-                                                                <tr>
-                                                                    <th scope="col">PV name</th>
-                                                                    <th scope="col">Description</th>
-                                                                    <th scope="col">Interval</th>
-                                                                    <th scope="col" class="pvlog-pv-actions-col"></th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody id="pvlogPvsBody"></tbody>
-                                                        </table>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            {% endfor %}
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <label class="form-label">Acknowledgments</label>
-                                <div class="dash-card acknowledgments-container">
-                                    <div class="acknowledgments-selected mb-2">
-                                        <span id="selectedAcknowledgmentsText" class="text-muted">No acknowledgments selected</span>
-                                    </div>
-                                    <div class="acknowledgments-list border rounded p-3">
-                                        {% for ack in acknowledgments %}
-                                        <div class="form-check">
-                                            <input class="form-check-input acknowledgment-checkbox" type="checkbox" value="{{ ack.id }}" id="ack{{ ack.id }}">
-                                            <label class="form-check-label" for="ack{{ ack.id }}">
-                                                {{ ack.title }}
-                                            </label>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                            </div>
+                            <input type="hidden" id="selectedAcknowledgments" name="acknowledgments">
                         </div>
-
-                        <div class="row mb-2">
-                            <div class="col-12">
-                                <label class="form-label">DOI Options</label>
-                                <div class="doi-options-group">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="createDoi" name="createDoi" checked>
-                                        <label class="form-check-label" for="createDoi">
-                                            Create DOI for this experiment
-                                        </label>
-                                    </div>
-                                    <div class="form-check" id="draftDoiContainer">
-                                        <input class="form-check-input" type="checkbox" id="draftDoi" name="draftDoi">
-                                        <label class="form-check-label" for="draftDoi">
-                                            Create as draft DOI
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
-
-                        <input type="hidden" id="selectedAcknowledgments" name="acknowledgments">
-
-                        {% if nextcloud_enabled %}
-                        <div class="row mb-4 mt-2">
-                            <div class="col-12">
-                                <div class="dash-card" id="nextcloudCard">
-                                    <header class="dash-card-header">
-                                        <h2 class="dash-card-title">Nextcloud Sharing</h2>
-                                    </header>
-                                    <div class="dash-card-section">
-                                        <div class="row g-3">
-                                            <div class="col-md-8">
-                                                <label for="nextcloudPath" class="form-label">Server Path</label>
-                                                <input type="text" class="form-control" id="nextcloudPath" placeholder="e.g. /cars4/data/xas_user/2026.3/Eguiguren">
-                                                <div class="form-text">Local filesystem path on the Nextcloud server. The folder will be created as an external storage mount.</div>
-                                            </div>
-                                            <div class="col-md-4">
-                                                <label for="nextcloudMountName" class="form-label">Mount Name</label>
-                                                <input type="text" class="form-control" id="nextcloudMountName" placeholder="e.g. Eguiguren">
-                                                <div class="form-text">Name shown to users in Nextcloud.</div>
-                                            </div>
-                                        </div>
-                                        <div class="row g-3 mt-1">
-                                            <div class="col-12">
-                                                <label class="form-label">Nextcloud Users</label>
-                                                <div class="form-text mb-1">Search by name to find Nextcloud users.</div>
-                                                <div id="nextcloudRecipientsContainer" class="d-flex flex-column gap-2"></div>
-                                                <div class="d-flex gap-2 mt-2">
-                                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="addNextcloudRecipientBtn">
-                                                        <i class="bi bi-plus-circle me-1"></i>Add Existing User
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="createNextcloudUserBtn"
-                                                            data-bs-toggle="collapse" data-bs-target="#createNextcloudUserForm">
-                                                        <i class="bi bi-person-plus me-1"></i>New User
-                                                    </button>
-                                                </div>
-                                                <div class="collapse mt-2" id="createNextcloudUserForm">
-                                                    <div class="card card-body p-2">
-                                                        <div class="row g-2">
-                                                            <div class="col-6">
-                                                                <input type="text" class="form-control form-control-sm" id="newNcUsername" placeholder="Username (uid)">
-                                                            </div>
-                                                            <div class="col-6">
-                                                                <input type="text" class="form-control form-control-sm" id="newNcDisplayName" placeholder="Display name">
-                                                            </div>
-                                                            <div class="col-12">
-                                                                <input type="email" class="form-control form-control-sm" id="newNcEmail" placeholder="Email (Nextcloud will send an activation link)">
-                                                            </div>
-                                                            <div class="col-12 d-flex align-items-center gap-2">
-                                                                <button type="button" class="btn btn-sm btn-primary" id="submitCreateNcUserBtn">
-                                                                    <i class="bi bi-person-check me-1"></i>Create &amp; Add
-                                                                </button>
-                                                                <span id="createNcUserStatus" class="small"></span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="row mt-3">
-                                            <div class="col-12 d-flex align-items-center gap-3">
-                                                <button type="button" class="btn btn-outline-primary btn-sm" id="shareNextcloudBtn">
-                                                    <i class="bi bi-cloud-arrow-up me-1"></i>Create Nextcloud Mount
-                                                </button>
-                                                <span id="nextcloudShareStatus" class="small"></span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {% endif %}
                     </form>
+                </div>
                 </div>
             </div>
         </section>
