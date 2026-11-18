@@ -13,6 +13,7 @@
         <header class="dash-topbar">
             <nav class="dash-topbar-nav">
                 <a href="/" class="dash-topbar-nav-item active" aria-current="page">Experiments</a>
+                <a href="{{ url_for('api_v1.users_page') }}" class="dash-topbar-nav-item">Users</a>
             </nav>
             <div class="dash-user-panel">
                 {% if current_user.is_authenticated %}

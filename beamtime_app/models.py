@@ -22,7 +22,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from beamtime_app.database import BASE
 
-__all__ = ["Info", "Acknowledgment", "Technique", "Run", "APSBeamline", "Experiment", "ExperimentPerson", "Institution", "Person", "ProcessStatus", "ProcessStatusEnum", "Queue", "UserType"]
+__all__ = ["Info", "Acknowledgment", "Technique", "Run", "APSBeamline", "Experiment", "ExperimentPerson", "Institution", "Person", "ProcessStatus", "ProcessStatusEnum", "Queue", "UserLevel", "UserType"]
 
 
 class ProcessStatusEnum(IntEnum):
@@ -243,6 +243,19 @@ class Institution(BASE, BaseModel):
 
     def __post_init__(self) -> None:
         self._columns = {"id": self.id, "name": self.name, "city": self.city, "country": self.country}
+
+
+@dataclass
+class UserLevel(BASE, BaseModel):
+    """Model for user levels (career stage)."""
+
+    __tablename__ = "user_level"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(64))
+
+    def __post_init__(self) -> None:
+        self._columns = {"id": self.id, "name": self.name}
 
 
 @dataclass

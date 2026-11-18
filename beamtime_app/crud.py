@@ -13,7 +13,7 @@
 
 import logging
 
-from sqlalchemy import insert, update
+from sqlalchemy import func, insert, update
 from sqlalchemy.future import select
 from sqlalchemy.orm import Session, aliased
 
@@ -30,13 +30,14 @@ from beamtime_app.models import (
     ProcessStatusEnum,
     Queue,
     Technique,
+    UserLevel,
     UserType,
 )
 from beamtime_app.utils import format_experiment_data, to_dictionary
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["add_to_queue", "get_all_entries", "get_experiments", "get_info_value"]
+__all__ = ["add_to_queue", "get_all_entries", "get_experiments", "get_info_value", "get_persons"]
 
 
 def _select_all(db: Session, model: BaseModel) -> list[BaseModel]:
@@ -50,6 +51,55 @@ def get_all_entries(model: BaseModel) -> list[dict[str, any]]:
             return [to_dictionary(entry) for entry in _select_all(session, model)]
         except Exception as e:
             logger.error(f"Error fetching entries for {getattr(model, '__name__', 'Unknown')}: {e}")
+            return []
+
+
+def get_persons() -> list[dict]:
+    """Return all persons with institution, career stage, and ESAF count, ordered by last name."""
+    with session_scope() as session:
+        try:
+            esaf_count = (
+                select(func.count(ExperimentPerson.experiment_id))
+                .where(ExperimentPerson.person_id == Person.id)
+                .correlate(Person)
+                .scalar_subquery()
+            )
+            rows = session.execute(
+                select(
+                    Person.id,
+                    Person.badge,
+                    Person.first_name,
+                    Person.last_name,
+                    Person.email,
+                    Person.orcid,
+                    Institution.name.label("affiliation"),
+                    Institution.city.label("city"),
+                    Institution.country.label("country"),
+                    UserLevel.name.label("career_stage"),
+                    esaf_count.label("esaf_count"),
+                )
+                .outerjoin(Institution, Person.affiliation_id == Institution.id)
+                .outerjoin(UserLevel, Person.user_level_id == UserLevel.id)
+                .order_by(Person.last_name, Person.first_name)
+            ).all()
+            return [
+                {
+                    "id": r.id,
+                    "badge": r.badge or "",
+                    "first_name": r.first_name or "",
+                    "last_name": r.last_name or "",
+                    "email": r.email or "",
+                    "orcid": r.orcid or "",
+                    "affiliation": r.affiliation or "",
+                    "city": r.city or "",
+                    "country": r.country or "",
+                    "career_stage": r.career_stage or "",
+                    "esaf_count": r.esaf_count or 0,
+                }
+                for r in rows
+            ]
+        except Exception as e:
+            logger.error(f"Error fetching persons: {e}")
             return []
 
 

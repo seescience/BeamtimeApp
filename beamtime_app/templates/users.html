@@ -1,0 +1,115 @@
+{% extends "layout.html" %}
+{% block content %}
+{% set total_count = persons|length %}
+
+<div class="dashboard">
+    <div class="dashboard-main">
+        <div class="dash-header">
+            <div class="dash-header-logo">
+                <img src="https://seescience.org/wp-content/uploads/2024/07/NSF-SEES-Logo.png"
+                     alt="NSF SEES Logo"
+                     class="dash-guild-logo">
+            </div>
+            <header class="dash-topbar">
+                <nav class="dash-topbar-nav">
+                    <a href="/" class="dash-topbar-nav-item">Experiments</a>
+                    <a href="{{ url_for('api_v1.users_page') }}" class="dash-topbar-nav-item active" aria-current="page">Users</a>
+                </nav>
+                <div class="dash-user-panel">
+                    {% if current_user.is_authenticated %}
+                    {% set uname = current_user.display_name or current_user.username or '' %}
+                    {% set uparts = uname.split() %}
+                    {% set uinit = (uparts[0][0] if uparts and uparts[0] else '?') + (uparts[-1][0] if uparts|length > 1 else '') %}
+                    <span class="user-panel-avatar">{{ uinit | upper }}</span>
+                    <span class="dash-user-name">{{ uname }}</span>
+                    {% endif %}
+                    <div class="dash-user-tools">
+                        <a href="https://seescience.github.io/BeamtimeApp/" target="_blank" rel="noopener noreferrer" class="dash-user-tool" title="Documentation" aria-label="Documentation">
+                            <i class="bi bi-book"></i>
+                        </a>
+                        <a href="{{ url_for('auth.logout') }}" class="dash-user-tool" title="Logout" aria-label="Logout">
+                            <i class="bi bi-box-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </header>
+            <div class="dash-filterbar">
+                <div class="dash-search">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input type="search" id="usersSearchInput" class="dash-search-input"
+                           placeholder="Search users..." autocomplete="off">
+                </div>
+            </div>
+        </div>
+
+        <section class="dash-panel">
+            <div class="dash-list-view">
+                <div class="dash-table-status">
+                    <span class="dash-table-status-count">
+                        <span id="usersVisibleCount">{{ total_count }}</span> of {{ total_count }} users
+                    </span>
+                </div>
+                <div class="dash-table-wrap">
+                    <table class="dash-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Name</th>
+                                <th scope="col">Badge</th>
+                                <th scope="col">Email</th>
+                                <th scope="col">ORCID</th>
+                                <th scope="col">Institution</th>
+                                <th scope="col">City</th>
+                                <th scope="col">Country</th>
+                                <th scope="col">Career stage</th>
+                                <th scope="col">ESAFs</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                        {% for person in persons %}
+                        <tr class="user-row">
+                            <td class="exp-col-main">
+                                <span class="experiment-title-text">{{ person.last_name }}{% if person.first_name %}, {{ person.first_name }}{% endif %}</span>
+                            </td>
+                            <td class="small font-monospace">{{ person.badge or '' }}</td>
+                            <td class="small">
+                                {% if person.email %}
+                                <a href="mailto:{{ person.email }}" class="text-decoration-none">{{ person.email }}</a>
+                                {% endif %}
+                            </td>
+                            <td class="small font-monospace">
+                                {% if person.orcid %}
+                                <a href="https://orcid.org/{{ person.orcid }}" target="_blank" rel="noopener noreferrer"
+                                   class="text-decoration-none d-flex align-items-center gap-1">
+                                    <img src="https://orcid.org/sites/default/files/images/orcid_16x16.png" alt="ORCID" width="16" height="16">
+                                    {{ person.orcid }}
+                                </a>
+                                {% endif %}
+                            </td>
+                            <td class="small">{{ person.affiliation or '' }}</td>
+                            <td class="small text-muted">{{ person.city or '' }}</td>
+                            <td class="small text-muted">{{ person.country or '' }}</td>
+                            <td class="small text-muted">{{ person.career_stage or '' }}</td>
+                            <td class="small text-center">{{ person.esaf_count or '' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="9">
+                                <div class="exp-empty-state">
+                                    <i class="bi bi-people exp-empty-icon" aria-hidden="true"></i>
+                                    <p class="exp-empty-title">No users found</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/users.js') }}"></script>
+{% endblock %}
