@@ -1561,7 +1561,6 @@ input[type="checkbox"]:checked::after {
     align-items: center;
     padding: 0 0.75rem 0 1rem;
     margin-left: auto;
-    border-left: 1px solid #e8edf2;
 }
 
 .dash-user-name {
