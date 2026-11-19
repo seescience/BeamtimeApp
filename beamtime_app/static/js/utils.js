@@ -906,7 +906,7 @@ function populateViewDetails(experiment) {
                 const roleLabel = (spokespersonName && name.trim() === spokespersonName) ? 'PI' : 'User';
                 const role = `<span class="role-pill role-pill--${roleLabel.toLowerCase()}">${roleLabel}</span>`;
                 const orcid = u.orcid && !isBlank(u.orcid)
-                    ? `<a class="orcid-link" href="https://orcid.org/${u.orcid}" target="_blank">${u.orcid}</a>`
+                    ? `<a class="orcid-link" href="https://orcid.org/${u.orcid}" target="_blank"><img src="https://orcid.org/sites/default/files/images/orcid_16x16.png" alt="ORCID" width="16" height="16"> ${u.orcid}</a>`
                     : '';
                 return `<tr>
                     <td>${name}</td>
