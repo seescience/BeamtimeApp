@@ -228,12 +228,34 @@ class Proposal(BASE, BaseModel):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     title: Mapped[str] = mapped_column(Text)
     spokesperson_id: Mapped[int] = mapped_column(Integer, ForeignKey("person.id"))
+    proposal_call: Mapped[str] = mapped_column(Text, nullable=True)
+    proposal_type: Mapped[str] = mapped_column(Text, nullable=True)
+    co_pi: Mapped[str] = mapped_column(Text, nullable=True)
+    primary_area: Mapped[str] = mapped_column(Text, nullable=True)
+    additional_areas: Mapped[str] = mapped_column(Text, nullable=True)
+    review_panel: Mapped[str] = mapped_column(Text, nullable=True)
+    run_cycle: Mapped[str] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(Text, nullable=True)
+    submitted_date: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=True)
+    beamlines: Mapped[str] = mapped_column(Text, nullable=True)
+    pdf_file: Mapped[str] = mapped_column(Text, nullable=True)
 
     def __post_init__(self) -> None:
         self._columns = {
             "id": self.id,
             "title": self.title,
             "spokesperson_id": self.spokesperson_id,
+            "proposal_call": self.proposal_call,
+            "proposal_type": self.proposal_type,
+            "co_pi": self.co_pi,
+            "primary_area": self.primary_area,
+            "additional_areas": self.additional_areas,
+            "review_panel": self.review_panel,
+            "run_cycle": self.run_cycle,
+            "status": self.status,
+            "submitted_date": self.submitted_date,
+            "beamlines": self.beamlines,
+            "pdf_file": self.pdf_file,
         }
 
 

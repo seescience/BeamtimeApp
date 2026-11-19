@@ -121,6 +121,17 @@ def get_proposals() -> list[dict]:
                 select(
                     Proposal.id,
                     Proposal.title,
+                    Proposal.proposal_call,
+                    Proposal.proposal_type,
+                    Proposal.co_pi,
+                    Proposal.primary_area,
+                    Proposal.additional_areas,
+                    Proposal.review_panel,
+                    Proposal.run_cycle,
+                    Proposal.status,
+                    Proposal.submitted_date,
+                    Proposal.beamlines,
+                    Proposal.pdf_file,
                     PI.first_name.label("pi_first_name"),
                     PI.last_name.label("pi_last_name"),
                     esaf_count.label("esaf_count"),
@@ -149,6 +160,34 @@ def get_proposals() -> list[dict]:
                     "percentage": f.percentage,
                 })
 
+            # Fetch experiments for each proposal
+            ExperimentBeamline = aliased(APSBeamline)
+            experiment_rows = session.execute(
+                select(
+                    Experiment.proposal_id,
+                    Experiment.id,
+                    Experiment.etr_number,
+                    Experiment.start_date,
+                    Experiment.end_date,
+                    Experiment.time_request,
+                    ExperimentBeamline.name.label("beamline_name"),
+                )
+                .outerjoin(ExperimentBeamline, Experiment.beamline_id == ExperimentBeamline.id)
+                .where(Experiment.proposal_id.isnot(None))
+                .order_by(Experiment.start_date)
+            ).all()
+            experiments_by_proposal: dict[int, list[dict]] = {}
+            for e in experiment_rows:
+                if e.proposal_id:
+                    experiments_by_proposal.setdefault(e.proposal_id, []).append({
+                        "id": e.id,
+                        "etr_number": e.etr_number,
+                        "beamline_name": e.beamline_name or "",
+                        "start_date": e.start_date,
+                        "end_date": e.end_date,
+                        "time_request": e.time_request,
+                    })
+
             return [
                 {
                     "id": r.id,
@@ -156,6 +195,18 @@ def get_proposals() -> list[dict]:
                     "pi_name": f"{r.pi_first_name or ''} {r.pi_last_name or ''}".strip() or "",
                     "esaf_count": r.esaf_count or 0,
                     "funding": funding_by_proposal.get(r.id, []),
+                    "experiments": experiments_by_proposal.get(r.id, []),
+                    "proposal_call": r.proposal_call,
+                    "proposal_type": r.proposal_type,
+                    "co_pi": r.co_pi,
+                    "primary_area": r.primary_area,
+                    "additional_areas": r.additional_areas,
+                    "review_panel": r.review_panel,
+                    "run_cycle": r.run_cycle,
+                    "status": r.status,
+                    "submitted_date": r.submitted_date,
+                    "beamlines": r.beamlines,
+                    "pdf_file": r.pdf_file,
                 }
                 for r in rows
             ]

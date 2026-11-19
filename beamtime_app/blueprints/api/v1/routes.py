@@ -81,6 +81,33 @@ def proposals_page() -> str:
     return render_template("proposals.html", proposals=get_proposals())
 
 
+@api_v1.route("/experiments/<int:experiment_id>")
+@login_required
+def experiment_detail(experiment_id: int) -> str:
+    return render_template(
+        "index.html",
+        beamlines=get_all_entries(APSBeamline),
+        techniques=get_all_entries(Technique),
+        runs=get_all_entries(Run),
+        process_statuses=get_all_entries(ProcessStatus),
+        experiments=get_experiments(),
+        acknowledgments=get_all_entries(Acknowledgment),
+        last_modified=format_info_modification_time(get_all_entries(Info)),
+        selected_run=None,
+        selected_beamline=None,
+        selected_technique=None,
+        selected_status=None,
+        nextcloud_enabled=is_nextcloud_configured(),
+        open_experiment_id=experiment_id,
+    )
+
+
+@api_v1.route("/proposals/<int:proposal_id>")
+@login_required
+def proposal_detail(proposal_id: int) -> str:
+    return render_template("proposals.html", proposals=get_proposals(), open_proposal_id=proposal_id)
+
+
 @api_v1.route("/create_update_queue", methods=["POST"])
 @login_required
 def create_update_queue() -> str:

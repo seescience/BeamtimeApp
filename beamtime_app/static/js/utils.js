@@ -566,7 +566,12 @@ function showExperimentView(experimentId) {
     currentViewExperimentId = experimentId;
     currentEditingExperiment = experimentId;
 
-    history.pushState({ experimentDetail: true, id: experimentId }, '', window.location.href);
+    const expUrl = `/api/v1/experiments/${experimentId}`;
+    if (window.location.pathname === expUrl) {
+        history.replaceState({ experimentDetail: true, id: experimentId }, '', expUrl);
+    } else {
+        history.pushState({ experimentDetail: true, id: experimentId }, '', expUrl);
+    }
 
     if (panel) panel.classList.add('panel-has-detail');
     if (listView) listView.hidden = true;
@@ -618,11 +623,11 @@ function loadExperimentData(experimentId, mode = 'view') {
     if (!row) return;
 
     const expData = JSON.parse(row.getAttribute('data-experiment-data') || '{}');
-    const proposal = String(expData.proposal || '');
+    const proposal = String(expData.proposal_id || '');
     const experimentNumber = String(expData.id || '');
     const title = String(expData.title || '');
     const userFolder = row.getAttribute('data-user-folder') || '';
-    
+
     // Populate form fields
     document.getElementById('experimentId').value = experimentId;
     document.getElementById('experimentTitle').value = title;
@@ -818,7 +823,12 @@ function populateViewDetails(experiment) {
         experiment.start_date ? new Date(experiment.start_date).toLocaleDateString() : null);
     setDetailProp('detailViewEndDate',
         experiment.end_date ? new Date(experiment.end_date).toLocaleDateString() : null);
-    setDetailProp('detailViewProposal', experiment.proposal);
+    if (experiment.proposal_id) {
+        setDetailProp('detailViewProposal',
+            `<a href="/api/v1/proposals/${experiment.proposal_id}">${experiment.proposal_id}</a>`, true);
+    } else {
+        setDetailProp('detailViewProposal', null);
+    }
     setDetailProp('detailViewExperimentNumber', experiment.id);
 
     // ETR number
@@ -1125,7 +1135,7 @@ function performClientSideSearch(searchTerm) {
         }
         
         const expData = JSON.parse(row.getAttribute('data-experiment-data') || '{}');
-        const proposal = String(expData.proposal || '').toLowerCase();
+        const proposal = String(expData.proposal_id || '').toLowerCase();
         const experimentId = String(expData.id || '').toLowerCase();
         const spokesperson = String(expData.spokesperson_name || '').toLowerCase();
         const title = String(expData.title || '').toLowerCase();
@@ -1271,7 +1281,7 @@ function getCellValue(row, column) {
     const expData = JSON.parse(row.getAttribute('data-experiment-data') || '{}');
     switch (column) {
         case 'proposal':
-            return String(expData.proposal || '');
+            return String(expData.proposal_id || '');
         case 'experiment':
             return parseInt(expData.id, 10) || 0;
         case 'spokesperson':
@@ -1765,4 +1775,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Set default sorting by ESAF column
     setDefaultSorting();
     updateDashboardVisibleCount();
+
+    // Auto-open experiment when loaded at a dedicated experiment URL
+    if (window._openExperimentId) {
+        const targetRow = document.querySelector(`tr[data-experiment-id="${window._openExperimentId}"]`);
+        if (targetRow) {
+            showExperimentView(window._openExperimentId);
+        }
+    }
 });

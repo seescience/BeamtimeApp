@@ -111,7 +111,7 @@
                             </td>
                             <td class="exp-col-main">
                                 <span class="experiment-title-text">{{ experiment.title }}</span>
-                                <span class="exp-row-meta">{{ experiment.beamline_name or '' }} &middot; ESAF {{ experiment.id }} &middot; Proposal {{ experiment.proposal or 'N/A' }}</span>
+                                <span class="exp-row-meta">{{ experiment.beamline_name or '' }} &middot; ESAF {{ experiment.id }}{% if experiment.proposal_id %} &middot; Proposal {{ experiment.proposal_id }}{% endif %}</span>
                             </td>
                             <td class="exp-col-person">
                                 <span class="exp-avatar">{{ av1 }}{{ av2 }}</span>
@@ -469,3 +469,9 @@
     </div>
 </div><!-- .dashboard -->
 {% endblock content %}
+
+{% block scripts %}
+{% if open_experiment_id %}
+<script>window._openExperimentId = "{{ open_experiment_id }}";</script>
+{% endif %}
+{% endblock %}

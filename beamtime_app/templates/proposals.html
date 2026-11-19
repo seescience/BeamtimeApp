@@ -34,16 +34,18 @@
                 </div>
             </header>
             <div class="dash-filterbar">
-                <div class="dash-search">
-                    <i class="bi bi-search" aria-hidden="true"></i>
-                    <input type="search" id="proposalsSearchInput" class="dash-search-input"
-                           placeholder="Search proposals..." autocomplete="off">
+                <div class="dash-topbar-filters">
+                    <div class="dash-search">
+                        <i class="bi bi-search" aria-hidden="true"></i>
+                        <input type="search" id="proposalsSearchInput" class="dash-search-input"
+                               placeholder="Search proposals..." autocomplete="off">
+                    </div>
                 </div>
             </div>
         </div>
 
         <section class="dash-panel">
-            <div class="dash-list-view">
+            <div id="proposalsListView" class="dash-list-view">
                 <div class="dash-table-status">
                     <span class="dash-table-status-count">
                         <span id="proposalsVisibleCount">{{ total_count }}</span> of {{ total_count }} proposals
@@ -54,37 +56,38 @@
                         <thead>
                             <tr>
                                 <th scope="col">ID</th>
-                                <th scope="col">Title</th>
-                                <th scope="col">PI</th>
+                                <th scope="col" class="exp-th-main">Title</th>
+                                <th scope="col" class="exp-th-person">PI</th>
                                 <th scope="col">ESAFs</th>
                                 <th scope="col">Funding</th>
                             </tr>
                         </thead>
                         <tbody id="proposalsTableBody">
                         {% for proposal in proposals %}
-                        <tr class="proposal-row">
-                            <td class="small font-monospace">{{ proposal.id }}</td>
+                        {% set name_parts = (proposal.pi_name or '').split() %}
+                        {% set av1 = name_parts[0][0] if name_parts and name_parts[0] else '?' %}
+                        {% set av2 = name_parts[-1][0] if name_parts | length > 1 else '' %}
+                        <tr class="proposal-row"
+                            data-proposal-id="{{ proposal.id }}"
+                            data-proposal-data='{{ proposal | tojson | safe }}'>
+                            <td><span class="pill pill-id">{{ proposal.id }}</span></td>
                             <td class="exp-col-main">
                                 <span class="experiment-title-text">{{ proposal.title }}</span>
                             </td>
-                            <td class="small">{{ proposal.pi_name }}</td>
-                            <td class="small text-center">{{ proposal.esaf_count or '' }}</td>
-                            <td class="small">
-                                {% for f in proposal.funding %}
-                                <div class="funding-entry">
-                                    <span class="funding-source">{{ f.source }}</span>{% if f.details %} <span class="funding-details text-muted">{{ f.details }}</span>{% endif %}
-                                    {% if f.grant_number %}<span class="funding-grant font-monospace ms-1">{{ f.grant_number }}</span>{% endif %}
-                                    {% if f.percentage is not none %}<span class="funding-pct badge bg-secondary ms-1">{{ f.percentage }}%</span>{% endif %}
-                                </div>
-                                {% endfor %}
+                            <td class="exp-col-person">
+                                <span class="exp-avatar">{{ av1 }}{{ av2 }}</span>
+                                <span class="exp-person-name">{{ proposal.pi_name or 'N/A' }}</span>
                             </td>
+                            <td class="text-center">{% if proposal.esaf_count %}<span class="pill pill-esaf">{{ proposal.esaf_count }}</span>{% endif %}</td>
+                            <td class="text-center">{% if proposal.funding %}<span class="pill pill-funding">{{ proposal.funding|length }}</span>{% endif %}</td>
                         </tr>
                         {% else %}
-                        <tr>
+                        <tr class="exp-empty-row">
                             <td colspan="5">
                                 <div class="exp-empty-state">
                                     <i class="bi bi-file-earmark-text exp-empty-icon" aria-hidden="true"></i>
                                     <p class="exp-empty-title">No proposals found</p>
+                                    <p class="exp-empty-body">Try adjusting your search query.</p>
                                 </div>
                             </td>
                         </tr>
@@ -93,11 +96,124 @@
                     </table>
                 </div>
             </div>
+
+            <div id="proposalDetailView" class="dash-detail-view" hidden>
+                <div class="dash-detail-toolbar">
+                    <button type="button" id="backToProposalsBtn" aria-label="Back">
+                        <i class="bi bi-arrow-left"></i> Back
+                    </button>
+                </div>
+                <div class="dash-detail-scroll">
+                    <div class="detail-section-card">
+                        <div class="detail-panel-header">Overview</div>
+                        <div class="detail-title-section">
+                            <div class="detail-title-ids">
+                                <div class="detail-title-id">
+                                    <span class="detail-prop-label">PROPOSAL #</span>
+                                    <div class="detail-prop-value" id="proposalDetailNumber"></div>
+                                </div>
+                                <div class="detail-title-id">
+                                    <span class="detail-prop-label">PI</span>
+                                    <div class="detail-prop-value" id="proposalDetailPi"></div>
+                                </div>
+                            </div>
+                            <h2 class="detail-title" id="proposalDetailTitle"></h2>
+                        </div>
+                        <div class="detail-body">
+                            <div class="detail-meta-strip">
+                                <div class="detail-prop">
+                                    <span class="detail-prop-label">Status</span>
+                                    <div class="detail-prop-value" id="proposalDetailStatus"></div>
+                                </div>
+                                <div class="detail-prop">
+                                    <span class="detail-prop-label">Proposal Call</span>
+                                    <div class="detail-prop-value" id="proposalDetailCall"></div>
+                                </div>
+                                <div class="detail-prop">
+                                    <span class="detail-prop-label">Type</span>
+                                    <div class="detail-prop-value" id="proposalDetailType"></div>
+                                </div>
+                                <div class="detail-prop">
+                                    <span class="detail-prop-label">Co-PI</span>
+                                    <div class="detail-prop-value" id="proposalDetailCoPi"></div>
+                                </div>
+                                <div class="detail-prop">
+                                    <span class="detail-prop-label">Primary Area</span>
+                                    <div class="detail-prop-value" id="proposalDetailPrimaryArea"></div>
+                                </div>
+                                <div class="detail-prop">
+                                    <span class="detail-prop-label">Additional Areas</span>
+                                    <div class="detail-prop-value" id="proposalDetailAdditionalAreas"></div>
+                                </div>
+                                <div class="detail-prop">
+                                    <span class="detail-prop-label">Review Panel</span>
+                                    <div class="detail-prop-value" id="proposalDetailReviewPanel"></div>
+                                </div>
+                                <div class="detail-prop">
+                                    <span class="detail-prop-label">Run Cycle</span>
+                                    <div class="detail-prop-value" id="proposalDetailRunCycle"></div>
+                                </div>
+                                <div class="detail-prop">
+                                    <span class="detail-prop-label">Submitted</span>
+                                    <div class="detail-prop-value" id="proposalDetailSubmitted"></div>
+                                </div>
+                                <div class="detail-prop">
+                                    <span class="detail-prop-label">Beamlines</span>
+                                    <div class="detail-prop-value" id="proposalDetailBeamlines"></div>
+                                </div>
+                                <div class="detail-prop">
+                                    <span class="detail-prop-label">PDF</span>
+                                    <div class="detail-prop-value" id="proposalDetailPdf"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail-section-card">
+                        <div class="detail-panel-header">Experiments</div>
+                        <div class="dash-table-wrap">
+                            <table class="dash-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">ETR #</th>
+                                        <th scope="col">ESAF #</th>
+                                        <th scope="col">Beamline</th>
+                                        <th scope="col">Start Date</th>
+                                        <th scope="col">End Date</th>
+                                        <th scope="col">Shifts</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="proposalExperimentsBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="detail-section-card">
+                        <div class="detail-panel-header">Funding Sources</div>
+                        <div class="dash-table-wrap">
+                            <table class="dash-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Source</th>
+                                        <th scope="col">Detail</th>
+                                        <th scope="col">Grant</th>
+                                        <th scope="col">Percentage</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="proposalFundingBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </section>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
+{% if open_proposal_id %}
+<script>window._openProposalId = "{{ open_proposal_id }}";</script>
+{% endif %}
 <script src="{{ url_for('static', filename='js/proposals.js') }}"></script>
 {% endblock %}
