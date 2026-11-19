@@ -17,7 +17,7 @@ from pathlib import Path
 from flask import Blueprint, flash, jsonify, render_template, request, send_file, abort
 from flask_login import login_required
 
-from beamtime_app.crud import add_to_queue, get_all_entries, get_experiments, get_info_value, get_persons
+from beamtime_app.crud import add_to_queue, get_all_entries, get_experiments, get_info_value, get_persons, get_proposals
 from beamtime_app.models import Acknowledgment, APSBeamline, Info, ProcessStatus, Run, Technique
 from beamtime_app.services import add_users_to_nextcloud_mount, create_nextcloud_mount, create_nextcloud_user, is_nextcloud_configured, list_nextcloud_mounts, search_nextcloud_users
 from beamtime_app.pvlog_yaml import empty_pvlog_config, parse_pvlog_yaml, serialize_pvlog_yaml
@@ -73,6 +73,12 @@ def home() -> str:
 @login_required
 def users_page() -> str:
     return render_template("users.html", persons=get_persons())
+
+
+@api_v1.route("/proposals")
+@login_required
+def proposals_page() -> str:
+    return render_template("proposals.html", proposals=get_proposals())
 
 
 @api_v1.route("/create_update_queue", methods=["POST"])

@@ -22,7 +22,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from beamtime_app.database import BASE
 
-__all__ = ["Info", "Acknowledgment", "Technique", "Run", "APSBeamline", "Experiment", "ExperimentPerson", "Institution", "Person", "ProcessStatus", "ProcessStatusEnum", "Queue", "UserLevel", "UserType"]
+__all__ = ["Info", "Acknowledgment", "Funding", "ProposalFunding", "Technique", "Run", "APSBeamline", "Experiment", "ExperimentPerson", "Institution", "Person", "ProcessStatus", "ProcessStatusEnum", "Proposal", "Queue", "UserLevel", "UserType"]
 
 
 class ProcessStatusEnum(IntEnum):
@@ -215,6 +215,59 @@ class Experiment(BASE, BaseModel):
             "process_status_id": self.process_status_id,
             "old_process_status_id": self.old_process_status_id,
         }
+
+
+@dataclass
+class Proposal(BASE, BaseModel):
+    """Model for the proposals."""
+
+    __tablename__ = "proposal"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(Text)
+    spokesperson_id: Mapped[int] = mapped_column(Integer, ForeignKey("person.id"))
+
+    def __post_init__(self) -> None:
+        self._columns = {
+            "id": self.id,
+            "title": self.title,
+            "spokesperson_id": self.spokesperson_id,
+        }
+
+
+@dataclass
+class Funding(BASE, BaseModel):
+    """Model for funding sources."""
+
+    __tablename__ = "funding"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source: Mapped[str] = mapped_column(String(512))
+    details: Mapped[str] = mapped_column(String(512))
+    grant_number: Mapped[str] = mapped_column(String(512))
+    percentage: Mapped[int] = mapped_column(Integer)
+
+    def __post_init__(self) -> None:
+        self._columns = {
+            "id": self.id,
+            "source": self.source,
+            "details": self.details,
+            "grant_number": self.grant_number,
+            "percentage": self.percentage,
+        }
+
+
+@dataclass
+class ProposalFunding(BASE, BaseModel):
+    """Junction model linking proposals to funding sources."""
+
+    __tablename__ = "proposal_funding"
+
+    proposal_id: Mapped[int] = mapped_column(Integer, ForeignKey("proposal.id"), primary_key=True)
+    funding_id: Mapped[int] = mapped_column(Integer, ForeignKey("funding.id"), primary_key=True)
+
+    def __post_init__(self) -> None:
+        self._columns = {"proposal_id": self.proposal_id, "funding_id": self.funding_id}
 
 
 @dataclass

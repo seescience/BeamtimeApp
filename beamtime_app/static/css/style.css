@@ -1301,7 +1301,7 @@ input[type="checkbox"]:checked::after {
 
 .dash-guild-logo {
     flex-shrink: 0;
-    height: 80px;
+    height: 34px;
     width: auto;
     object-fit: contain;
 }
@@ -1543,9 +1543,9 @@ input[type="checkbox"]:checked::after {
     flex-shrink: 0;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 0 1rem;
+    padding: 0 0.75rem 0 1rem;
     margin-left: auto;
+    border-left: 1px solid #e8edf2;
 }
 
 .dash-user-name {
@@ -1596,14 +1596,43 @@ input[type="checkbox"]:checked::after {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
     background: #dbebf6;
     color: #001540;
     font-size: 10.5px;
     font-weight: 700;
     letter-spacing: 0.03em;
+}
+
+.user-panel-trigger {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: none;
+    border: none;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+
+.user-panel-trigger:hover {
+    background: #f0f4f8;
+}
+
+.user-panel-trigger:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+.user-panel-trigger.dropdown-toggle::after {
+    display: none;
+}
+
+.user-panel-trigger:hover .user-panel-avatar {
+    background: #c5dff0;
 }
 
 .dashboard-main {
@@ -1617,20 +1646,22 @@ input[type="checkbox"]:checked::after {
 }
 
 .dash-header {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    grid-template-rows: 62px 48px;
+    display: flex;
+    flex-direction: column;
     flex-shrink: 0;
 }
 
 .dash-header-logo {
-    grid-row: 1 / 3;
+    display: none;
+}
+
+.dash-brand {
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding: 0 1.5rem;
-    min-width: 320px;
-    background: #ffffff;
+    padding: 0 1.25rem 0 1.5rem;
+    flex-shrink: 0;
+    height: 100%;
+    border-right: 1px solid #e8edf2;
 }
 
 .dash-filterbar {
@@ -1638,45 +1669,48 @@ input[type="checkbox"]:checked::after {
     align-items: center;
     justify-content: flex-end;
     padding: 0 1.5rem;
-    height: 48px;
-    background: #ffffff;
+    height: 44px;
+    background: #f5f7fa;
+    border-bottom: 1px solid #e8edf2;
     flex-shrink: 0;
 }
 
 .dash-topbar-nav {
     display: flex;
-    align-items: flex-end;
-    gap: 0.125rem;
+    align-items: stretch;
     height: 100%;
-    padding-left: 0.5rem;
+    padding: 0 0.5rem;
+    flex: 1;
 }
 
 .dash-topbar-nav-item {
     display: flex;
     align-items: center;
-    padding: 0 1rem 0;
-    height: 38px;
+    gap: 0.35rem;
+    padding: 0 0.875rem;
+    height: 100%;
     font-size: 13px;
     font-weight: 500;
     color: #69727d;
     text-decoration: none;
-    border-radius: 6px 6px 0 0;
-    border: 1px solid transparent;
-    border-bottom: none;
-    transition: color var(--transition-speed), background-color var(--transition-speed), border-color var(--transition-speed);
+    border: none;
+    border-radius: 0;
+    transition: color 0.15s, box-shadow 0.15s, background-color 0.15s;
     white-space: nowrap;
 }
 
 .dash-topbar-nav-item:hover {
     color: #333333;
-    background: #f1f1f1;
+    background: #f5f7fa;
+    text-decoration: none;
 }
 
-.dash-topbar-nav-item.active {
+.dash-topbar-nav-item.active,
+.dash-topbar-nav-item[aria-current="page"] {
     color: #002156;
     font-weight: 600;
-    background: #f1f1f1;
-    border-color: #dce6f0;
+    background: none;
+    box-shadow: inset 0 -2px 0 #002156;
 }
 
 .dash-topbar-filters {
@@ -1699,12 +1733,12 @@ input[type="checkbox"]:checked::after {
 
 .dash-topbar {
     display: flex;
-    align-items: center;
-    gap: var(--spacing-md);
-    padding: 0 1.5rem;
+    align-items: stretch;
+    padding: 0 1.5rem 0 0;
     background: #ffffff;
     flex-shrink: 0;
-    height: 62px;
+    height: 56px;
+    border-bottom: 1px solid #e8edf2;
 }
 
 .dash-menu-btn {

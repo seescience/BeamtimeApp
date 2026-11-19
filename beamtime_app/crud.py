@@ -23,11 +23,14 @@ from beamtime_app.models import (
     BaseModel,
     Experiment,
     ExperimentPerson,
+    Funding,
     Info,
     Institution,
     Person,
     ProcessStatus,
     ProcessStatusEnum,
+    Proposal,
+    ProposalFunding,
     Queue,
     Technique,
     UserLevel,
@@ -37,7 +40,7 @@ from beamtime_app.utils import format_experiment_data, to_dictionary
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["add_to_queue", "get_all_entries", "get_experiments", "get_info_value", "get_persons"]
+__all__ = ["add_to_queue", "get_all_entries", "get_experiments", "get_info_value", "get_persons", "get_proposals"]
 
 
 def _select_all(db: Session, model: BaseModel) -> list[BaseModel]:
@@ -100,6 +103,64 @@ def get_persons() -> list[dict]:
             ]
         except Exception as e:
             logger.error(f"Error fetching persons: {e}")
+            return []
+
+
+def get_proposals() -> list[dict]:
+    """Return all proposals with spokesperson name, linked ESAF count, and funding sources."""
+    with session_scope() as session:
+        try:
+            esaf_count = (
+                select(func.count(Experiment.id))
+                .where(Experiment.proposal_id == Proposal.id)
+                .correlate(Proposal)
+                .scalar_subquery()
+            )
+            PI = aliased(Person)
+            rows = session.execute(
+                select(
+                    Proposal.id,
+                    Proposal.title,
+                    PI.first_name.label("pi_first_name"),
+                    PI.last_name.label("pi_last_name"),
+                    esaf_count.label("esaf_count"),
+                )
+                .outerjoin(PI, Proposal.spokesperson_id == PI.id)
+                .order_by(Proposal.id.desc())
+            ).all()
+
+            # Fetch all funding sources in one query
+            funding_rows = session.execute(
+                select(
+                    ProposalFunding.proposal_id,
+                    Funding.source,
+                    Funding.details,
+                    Funding.grant_number,
+                    Funding.percentage,
+                )
+                .join(Funding, ProposalFunding.funding_id == Funding.id)
+            ).all()
+            funding_by_proposal: dict[int, list[dict]] = {}
+            for f in funding_rows:
+                funding_by_proposal.setdefault(f.proposal_id, []).append({
+                    "source": f.source or "",
+                    "details": f.details or "",
+                    "grant_number": f.grant_number or "",
+                    "percentage": f.percentage,
+                })
+
+            return [
+                {
+                    "id": r.id,
+                    "title": r.title or "",
+                    "pi_name": f"{r.pi_first_name or ''} {r.pi_last_name or ''}".strip() or "",
+                    "esaf_count": r.esaf_count or 0,
+                    "funding": funding_by_proposal.get(r.id, []),
+                }
+                for r in rows
+            ]
+        except Exception as e:
+            logger.error(f"Error fetching proposals: {e}")
             return []
 
 

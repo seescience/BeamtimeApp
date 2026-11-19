@@ -1,0 +1,108 @@
+{% extends "layout.html" %}
+{% block content %}
+{% set total_count = proposals|length %}
+
+<div class="dashboard">
+    <div class="dashboard-main">
+        <div class="dash-header">
+            <header class="dash-topbar">
+                <div class="dash-brand">
+                    <img src="https://seescience.org/wp-content/uploads/2024/07/NSF-SEES-Logo.png"
+                         alt="NSF SEES Logo"
+                         class="dash-guild-logo">
+                </div>
+                <nav class="dash-topbar-nav">
+                    <a href="/" class="dash-topbar-nav-item">Experiments</a>
+                    <a href="{{ url_for('api_v1.proposals_page') }}" class="dash-topbar-nav-item active" aria-current="page">Proposals</a>
+                    <a href="{{ url_for('api_v1.users_page') }}" class="dash-topbar-nav-item">Users</a>
+                    <a href="https://seescience.github.io/BeamtimeApp/" target="_blank" rel="noopener noreferrer" class="dash-topbar-nav-item">Docs</a>
+                </nav>
+                <div class="dash-user-panel">
+                    {% if current_user.is_authenticated %}
+                    {% set uname = current_user.display_name or current_user.username or '' %}
+                    {% set uparts = uname.split() %}
+                    {% set uinit = (uparts[0][0] if uparts and uparts[0] else '?') + (uparts[-1][0] if uparts|length > 1 else '') %}
+                    <div class="dropdown">
+                        <button class="user-panel-trigger dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="dash-user-name">{{ uname }}</span>
+                            <span class="user-panel-avatar">{{ uinit | upper }}</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('auth.logout') }}">
+                                    <i class="bi bi-box-arrow-right"></i> Sign out
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
+            </header>
+            <div class="dash-filterbar">
+                <div class="dash-search">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input type="search" id="proposalsSearchInput" class="dash-search-input"
+                           placeholder="Search proposals..." autocomplete="off">
+                </div>
+            </div>
+        </div>
+
+        <section class="dash-panel">
+            <div class="dash-list-view">
+                <div class="dash-table-status">
+                    <span class="dash-table-status-count">
+                        <span id="proposalsVisibleCount">{{ total_count }}</span> of {{ total_count }} proposals
+                    </span>
+                </div>
+                <div class="dash-table-wrap">
+                    <table class="dash-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">ID</th>
+                                <th scope="col">Title</th>
+                                <th scope="col">PI</th>
+                                <th scope="col">ESAFs</th>
+                                <th scope="col">Funding</th>
+                            </tr>
+                        </thead>
+                        <tbody id="proposalsTableBody">
+                        {% for proposal in proposals %}
+                        <tr class="proposal-row">
+                            <td class="small font-monospace">{{ proposal.id }}</td>
+                            <td class="exp-col-main">
+                                <span class="experiment-title-text">{{ proposal.title }}</span>
+                            </td>
+                            <td class="small">{{ proposal.pi_name }}</td>
+                            <td class="small text-center">{{ proposal.esaf_count or '' }}</td>
+                            <td class="small">
+                                {% for f in proposal.funding %}
+                                <div class="funding-entry">
+                                    <span class="funding-source">{{ f.source }}</span>{% if f.details %} <span class="funding-details text-muted">{{ f.details }}</span>{% endif %}
+                                    {% if f.grant_number %}<span class="funding-grant font-monospace ms-1">{{ f.grant_number }}</span>{% endif %}
+                                    {% if f.percentage is not none %}<span class="funding-pct badge bg-secondary ms-1">{{ f.percentage }}%</span>{% endif %}
+                                </div>
+                                {% endfor %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5">
+                                <div class="exp-empty-state">
+                                    <i class="bi bi-file-earmark-text exp-empty-icon" aria-hidden="true"></i>
+                                    <p class="exp-empty-title">No proposals found</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/proposals.js') }}"></script>
+{% endblock %}

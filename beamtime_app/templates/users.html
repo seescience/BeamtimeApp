@@ -5,32 +5,37 @@
 <div class="dashboard">
     <div class="dashboard-main">
         <div class="dash-header">
-            <div class="dash-header-logo">
-                <img src="https://seescience.org/wp-content/uploads/2024/07/NSF-SEES-Logo.png"
-                     alt="NSF SEES Logo"
-                     class="dash-guild-logo">
-            </div>
             <header class="dash-topbar">
+                <div class="dash-brand">
+                    <img src="https://seescience.org/wp-content/uploads/2024/07/NSF-SEES-Logo.png"
+                         alt="NSF SEES Logo"
+                         class="dash-guild-logo">
+                </div>
                 <nav class="dash-topbar-nav">
                     <a href="/" class="dash-topbar-nav-item">Experiments</a>
+                    <a href="{{ url_for('api_v1.proposals_page') }}" class="dash-topbar-nav-item">Proposals</a>
                     <a href="{{ url_for('api_v1.users_page') }}" class="dash-topbar-nav-item active" aria-current="page">Users</a>
+                    <a href="https://seescience.github.io/BeamtimeApp/" target="_blank" rel="noopener noreferrer" class="dash-topbar-nav-item">Docs</a>
                 </nav>
                 <div class="dash-user-panel">
                     {% if current_user.is_authenticated %}
                     {% set uname = current_user.display_name or current_user.username or '' %}
                     {% set uparts = uname.split() %}
                     {% set uinit = (uparts[0][0] if uparts and uparts[0] else '?') + (uparts[-1][0] if uparts|length > 1 else '') %}
-                    <span class="user-panel-avatar">{{ uinit | upper }}</span>
-                    <span class="dash-user-name">{{ uname }}</span>
-                    {% endif %}
-                    <div class="dash-user-tools">
-                        <a href="https://seescience.github.io/BeamtimeApp/" target="_blank" rel="noopener noreferrer" class="dash-user-tool" title="Documentation" aria-label="Documentation">
-                            <i class="bi bi-book"></i>
-                        </a>
-                        <a href="{{ url_for('auth.logout') }}" class="dash-user-tool" title="Logout" aria-label="Logout">
-                            <i class="bi bi-box-arrow-right"></i>
-                        </a>
+                    <div class="dropdown">
+                        <button class="user-panel-trigger dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="dash-user-name">{{ uname }}</span>
+                            <span class="user-panel-avatar">{{ uinit | upper }}</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('auth.logout') }}">
+                                    <i class="bi bi-box-arrow-right"></i> Sign out
+                                </a>
+                            </li>
+                        </ul>
                     </div>
+                    {% endif %}
                 </div>
             </header>
             <div class="dash-filterbar">
