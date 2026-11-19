@@ -821,6 +821,9 @@ function populateViewDetails(experiment) {
     setDetailProp('detailViewProposal', experiment.proposal);
     setDetailProp('detailViewExperimentNumber', experiment.id);
 
+    // ETR number
+    setDetailProp('detailViewEtrNumber', experiment.etr_number || null);
+
     // ESAF PDF
     if (experiment.esaf_pdf_file && !isBlank(experiment.esaf_pdf_file)) {
         const pdfUrl = `/api/v1/serve_pdf?path=${encodeURIComponent(experiment.esaf_pdf_file)}`;

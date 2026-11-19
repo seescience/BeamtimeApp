@@ -190,6 +190,7 @@ class Experiment(BASE, BaseModel):
     pvlog_file: Mapped[str] = mapped_column(Text)
     process_status_id: Mapped[int] = mapped_column(Integer, ForeignKey("process_status.id"), default=ProcessStatusEnum.NEW)
     old_process_status_id: Mapped[int] = mapped_column(Integer, ForeignKey("process_status.id"), default=ProcessStatusEnum.NEW)
+    etr_number: Mapped[int] = mapped_column(Integer, nullable=True)
 
     def __post_init__(self) -> None:
         self._columns = {
@@ -214,6 +215,7 @@ class Experiment(BASE, BaseModel):
             "pvlog_file": self.pvlog_file,
             "process_status_id": self.process_status_id,
             "old_process_status_id": self.old_process_status_id,
+            "etr_number": self.etr_number,
         }
 
 

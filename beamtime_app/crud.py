@@ -210,6 +210,7 @@ def get_experiments(
                     Experiment.aps_doi,
                     Experiment.esaf_pdf_file,
                     Experiment.pvlog_file,
+                    Experiment.etr_number,
                     # Person information
                     Spokesperson.first_name.label("spokesperson_first_name"),
                     Spokesperson.last_name.label("spokesperson_last_name"),
@@ -290,6 +291,7 @@ def get_experiments(
                     "aps_doi": result.aps_doi,
                     "esaf_pdf_file": result.esaf_pdf_file,
                     "pvlog_file": result.pvlog_file,
+                    "etr_number": result.etr_number,
                     # Person information
                     "spokesperson_name": f"{result.spokesperson_first_name or ''} {result.spokesperson_last_name or ''}".strip() or None,
                     "spokesperson_email": result.spokesperson_email,
