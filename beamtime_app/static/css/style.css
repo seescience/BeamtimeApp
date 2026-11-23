@@ -2214,6 +2214,11 @@ input[type="checkbox"]:checked::after {
     color: #69727d;
 }
 
+.role-pill--staff {
+    background: #d1fae5;
+    color: #065f46;
+}
+
 .users-section .orcid-link {
     font-size: 11px;
 }

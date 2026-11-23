@@ -149,6 +149,7 @@ class Person(BASE, BaseModel):
     orcid: Mapped[str] = mapped_column(String(64))
     affiliation_id: Mapped[int] = mapped_column(Integer, ForeignKey("institution.id"))
     user_level_id: Mapped[int] = mapped_column(Integer, ForeignKey("user_level.id"))
+    is_staff: Mapped[bool] = mapped_column(Boolean, default=False, nullable=True)
 
     def __post_init__(self) -> None:
         self._columns = {
@@ -160,6 +161,7 @@ class Person(BASE, BaseModel):
             "orcid": self.orcid,
             "affiliation_id": self.affiliation_id,
             "user_level_id": self.user_level_id,
+            "is_staff": self.is_staff,
         }
 
 
@@ -364,6 +366,7 @@ class ExperimentPerson(BASE, BaseModel):
             "person_id": self.person_id,
             "user_type_id": self.user_type_id,
         }
+
 
 
 @dataclass

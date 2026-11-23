@@ -897,13 +897,18 @@ function populateViewDetails(experiment) {
         if (experiment.users && experiment.users.length > 0) {
             const spokespersonName = (experiment.spokesperson_name && !isBlank(experiment.spokesperson_name))
                 ? experiment.spokesperson_name.trim() : '';
-            const rows = experiment.users.map(u => {
+            const sorted = [...experiment.users].sort((a, b) => {
+                const ra = a.role === 'Staff' ? 2 : (spokespersonName && (a.name||'').trim() === spokespersonName ? 0 : 1);
+                const rb = b.role === 'Staff' ? 2 : (spokespersonName && (b.name||'').trim() === spokespersonName ? 0 : 1);
+                return ra - rb;
+            });
+            const rows = sorted.map(u => {
                 const name = u.name || '';
                 const badge = u.badge ? `<span class="badge-pill">${u.badge}</span>` : '';
                 const institution = u.institution || '';
                 const email = u.email && !isBlank(u.email)
                     ? `<a href="mailto:${u.email}">${u.email}</a>` : '';
-                const roleLabel = (spokespersonName && name.trim() === spokespersonName) ? 'PI' : 'User';
+                const roleLabel = u.role === 'Staff' ? 'Staff' : (spokespersonName && name.trim() === spokespersonName) ? 'PI' : 'User';
                 const role = `<span class="role-pill role-pill--${roleLabel.toLowerCase()}">${roleLabel}</span>`;
                 const orcid = u.orcid && !isBlank(u.orcid)
                     ? `<a class="orcid-link" href="https://orcid.org/${u.orcid}" target="_blank"><img src="https://orcid.org/sites/default/files/images/orcid_16x16.png" alt="ORCID" width="16" height="16"> ${u.orcid}</a>`

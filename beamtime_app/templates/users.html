@@ -56,17 +56,18 @@
                                 <th scope="col">Name</th>
                                 <th scope="col">Badge</th>
                                 <th scope="col">Email</th>
-                                <th scope="col">ORCID</th>
+                                <th scope="col" style="min-width:220px">ORCID</th>
                                 <th scope="col">Institution</th>
                                 <th scope="col">City</th>
                                 <th scope="col">Country</th>
                                 <th scope="col">Career stage</th>
                                 <th scope="col">ESAFs</th>
+                                <th scope="col">Staff</th>
                             </tr>
                         </thead>
                         <tbody id="usersTableBody">
                         {% for person in persons %}
-                        <tr class="user-row">
+                        <tr class="user-row" data-person-id="{{ person.id }}" data-is-staff="{{ 'true' if person.is_staff else 'false' }}">
                             <td class="exp-col-main">
                                 <span class="experiment-title-text">{{ person.last_name }}{% if person.first_name %}, {{ person.first_name }}{% endif %}</span>
                             </td>
@@ -76,7 +77,7 @@
                                 <a href="mailto:{{ person.email }}" class="text-decoration-none">{{ person.email }}</a>
                                 {% endif %}
                             </td>
-                            <td class="small font-monospace">
+                            <td class="small font-monospace" style="white-space:nowrap">
                                 {% if person.orcid %}
                                 <a href="https://orcid.org/{{ person.orcid }}" target="_blank" rel="noopener noreferrer"
                                    class="text-decoration-none d-flex align-items-center gap-1">
@@ -90,10 +91,15 @@
                             <td class="small text-muted">{{ person.country or '' }}</td>
                             <td class="small text-muted">{{ person.career_stage or '' }}</td>
                             <td class="small text-center">{{ person.esaf_count or '' }}</td>
+                            <td class="text-center">
+                                <input type="checkbox" class="form-check-input staff-toggle-check"
+                                       data-person-id="{{ person.id }}"
+                                       {% if person.is_staff %}checked{% endif %}>
+                            </td>
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="9">
+                            <td colspan="10">
                                 <div class="exp-empty-state">
                                     <i class="bi bi-people exp-empty-icon" aria-hidden="true"></i>
                                     <p class="exp-empty-title">No users found</p>

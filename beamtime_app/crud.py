@@ -17,6 +17,8 @@ from sqlalchemy import func, insert, update
 from sqlalchemy.future import select
 from sqlalchemy.orm import Session, aliased
 
+from sqlalchemy import update as sa_update
+
 from beamtime_app.database import session_scope
 from beamtime_app.models import (
     APSBeamline,
@@ -40,7 +42,7 @@ from beamtime_app.utils import format_experiment_data, to_dictionary
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["add_to_queue", "get_all_entries", "get_experiments", "get_info_value", "get_persons", "get_proposals"]
+__all__ = ["add_to_queue", "get_all_entries", "get_experiments", "get_info_value", "get_persons", "get_proposals", "set_person_staff"]
 
 
 def _select_all(db: Session, model: BaseModel) -> list[BaseModel]:
@@ -75,6 +77,7 @@ def get_persons() -> list[dict]:
                     Person.last_name,
                     Person.email,
                     Person.orcid,
+                    Person.is_staff,
                     Institution.name.label("affiliation"),
                     Institution.city.label("city"),
                     Institution.country.label("country"),
@@ -98,6 +101,7 @@ def get_persons() -> list[dict]:
                     "country": r.country or "",
                     "career_stage": r.career_stage or "",
                     "esaf_count": r.esaf_count or 0,
+                    "is_staff": bool(r.is_staff),
                 }
                 for r in rows
             ]
@@ -215,6 +219,19 @@ def get_proposals() -> list[dict]:
             return []
 
 
+def set_person_staff(person_id: int, is_staff: bool) -> bool:
+    with session_scope() as session:
+        try:
+            cur = session.execute(
+                sa_update(Person).where(Person.id == person_id).values(is_staff=is_staff)
+            )
+            session.commit()
+            return cur.rowcount > 0
+        except Exception as e:
+            logger.error(f"Error setting staff status for person {person_id}: {e}")
+            return False
+
+
 def get_info_value(key: str) -> str | None:
     with session_scope() as session:
         try:
@@ -288,7 +305,7 @@ def get_experiments(
 
             results = query.all()
 
-            # Fetch all experiment users, joining experiment to get spokesperson_id
+            # Fetch all experiment users, joining experiment to get spokesperson_id and user_type
             ExperimentUser = aliased(Person)
             UserInstitution = aliased(Institution)
             ExperimentRef = aliased(Experiment)
@@ -304,15 +321,19 @@ def get_experiments(
                     ExperimentUser.orcid,
                     UserInstitution.name.label("institution_name"),
                     UserInstitution.country.label("institution_country"),
+                    UserType.name.label("user_type_name"),
                 )
                 .join(ExperimentUser, ExperimentPerson.person_id == ExperimentUser.id)
                 .join(ExperimentRef, ExperimentPerson.experiment_id == ExperimentRef.id)
                 .outerjoin(UserInstitution, ExperimentUser.affiliation_id == UserInstitution.id)
+                .outerjoin(UserType, ExperimentPerson.user_type_id == UserType.id)
                 .all()
             )
             users_by_experiment: dict[int, list[dict]] = {}
             for row in user_results:
-                is_pi = row.person_id == row.exp_spokesperson_id
+                is_staff = row.user_type_name == "Beamline Staff"
+                is_pi = (not is_staff) and (row.person_id == row.exp_spokesperson_id)
+                role = "Staff" if is_staff else ("PI" if is_pi else "User")
                 users_by_experiment.setdefault(row.experiment_id, []).append(
                     {
                         "badge": row.badge,
@@ -321,7 +342,7 @@ def get_experiments(
                         "orcid": row.orcid,
                         "institution": row.institution_name,
                         "country": row.institution_country,
-                        "role": "PI" if is_pi else "User",
+                        "role": role,
                     }
                 )
 

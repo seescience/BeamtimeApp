@@ -17,7 +17,7 @@ from pathlib import Path
 from flask import Blueprint, flash, jsonify, render_template, request, send_file, abort
 from flask_login import login_required
 
-from beamtime_app.crud import add_to_queue, get_all_entries, get_experiments, get_info_value, get_persons, get_proposals
+from beamtime_app.crud import add_to_queue, get_all_entries, get_experiments, get_info_value, get_persons, get_proposals, set_person_staff
 from beamtime_app.models import Acknowledgment, APSBeamline, Info, ProcessStatus, Run, Technique
 from beamtime_app.services import add_users_to_nextcloud_mount, create_nextcloud_mount, create_nextcloud_user, is_nextcloud_configured, list_nextcloud_mounts, search_nextcloud_users
 from beamtime_app.pvlog_yaml import empty_pvlog_config, parse_pvlog_yaml, serialize_pvlog_yaml
@@ -195,6 +195,17 @@ def get_pvlog_templates() -> str:
 
     templates.sort(key=lambda t: t["label"])
     return jsonify(templates)
+
+
+@api_v1.route("/persons/<int:person_id>/staff", methods=["POST"])
+@login_required
+def toggle_staff(person_id: int) -> str:
+    data = request.get_json() or {}
+    is_staff = bool(data.get("is_staff", False))
+    success = set_person_staff(person_id, is_staff)
+    if not success:
+        return jsonify({"error": "Person not found"}), 404
+    return jsonify({"success": True, "person_id": person_id, "is_staff": is_staff})
 
 
 @api_v1.route("/serve_pdf", methods=["GET"])
